@@ -1,0 +1,19 @@
+import 'package:project_absensi_ppkd_b4/models/response/profile_response.dart'
+    as profile;
+import 'package:project_absensi_ppkd_b4/service/api.dart';
+
+class ProfileRepository {
+  final ApiService _apiService;
+
+  ProfileRepository({required ApiService apiService})
+    : _apiService = apiService;
+
+  Future<profile.Data> fetchProfile() async {
+    try {
+      final profileData = await _apiService.getProfile();
+      return profileData;
+    } catch (e) {
+      throw Exception('Failed to fetch profile: $e');
+    }
+  }
+}
