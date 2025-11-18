@@ -120,14 +120,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      Text(
-                        'Email Address',
-                        style: TextStyle(
-                          color: AppColor.retroDarkRed,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+
                       const SizedBox(height: 8),
                       CustomTextFormField(
                         label: 'Email Address',
@@ -137,14 +130,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 24),
 
-                      Text(
-                        'Password',
-                        style: TextStyle(
-                          color: AppColor.retroDarkRed,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
                       const SizedBox(height: 8),
                       CustomTextFormField(
                         label: 'Password',
