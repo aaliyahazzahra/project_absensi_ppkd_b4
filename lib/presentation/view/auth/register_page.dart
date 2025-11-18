@@ -5,7 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/main_page.dart';
-import 'package:project_absensi_ppkd_b4/service/api.dart';
+import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
+import 'package:project_absensi_ppkd_b4/provider/dropdown_provider.dart';
+
+import 'package:provider/provider.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_dropdown_form_field.dart';
+import 'package:project_absensi_ppkd_b4/models/response/batches_response.dart';
+import 'package:project_absensi_ppkd_b4/models/response/training_response.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -20,25 +27,18 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  List<BatchData> _batchList = [];
-  List<TrainingData> _trainingList = [];
   int? _selectedBatchId;
   int? _selectedTrainingId;
   String? _selectedJenisKelamin;
-
-
   String? _profilePhotoBase64;
-  String _profilePhotoName = "Tap to select photo"; 
-
-  
-  final ApiService _apiService = ApiService();
-  bool _isLoading = false;
-  bool _isLoadingLists = true;
+  String _profilePhotoName = "Tap to select photo";
 
   @override
   void initState() {
     super.initState();
-    _loadDropdownData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<DropdownProvider>().fetchDropdownData();
+    });
   }
 
   @override
@@ -47,35 +47,6 @@ class _RegisterPageState extends State<RegisterPage> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  
-
-  Future<void> _loadDropdownData() async {
-    try {
-      final responses = await Future.wait([
-        _apiService.getBatches(),
-        _apiService.getTrainings(),
-      ]);
-
-      setState(() {
-        _batchList = responses[0] as List<BatchData>;
-        _trainingList = responses[1] as List<TrainingData>;
-        _isLoadingLists = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoadingLists = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load form data: $e'),
-            backgroundColor: AppColor.retroDarkRed,
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _pickImage() async {
@@ -94,8 +65,8 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  Future<void> _register() async {
-    if (!(_formKey.currentState?.validate() ?? false) || _isLoadingLists) {
+  Future<void> _register(AuthProvider authProvider) async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
     if (_selectedJenisKelamin == null ||
@@ -110,23 +81,17 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    final bool isSuccess = await authProvider.handleRegister(
+      name: _nameController.text,
+      email: _emailController.text,
+      password: _passwordController.text,
+      jenisKelamin: _selectedJenisKelamin,
+      profilePhoto: _profilePhotoBase64 ?? "",
+      batchId: _selectedBatchId,
+      trainingId: _selectedTrainingId,
+    );
 
-    try {
-      _profilePhotoBase64 ??= "";
-
-      await _apiService.register(
-        name: _nameController.text,
-        email: _emailController.text,
-        password: _passwordController.text,
-        jenisKelamin: _selectedJenisKelamin,
-        profilePhoto: _profilePhotoBase64!,
-        batchId: _selectedBatchId,
-        trainingId: _selectedTrainingId,
-      );
-
+    if (isSuccess) {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -134,16 +99,16 @@ class _RegisterPageState extends State<RegisterPage> {
           (route) => false,
         );
       }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+    } else {
       if (mounted) {
+        final String errorMessage =
+            (authProvider.registerErrorMessage ??
+                    'Register failed: Unknown error')
+                .replaceAll("Exception: ", "");
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Register Failed: ${e.toString().replaceAll("Exception: ", "")}',
-            ),
+            content: Text(errorMessage),
             backgroundColor: AppColor.retroDarkRed,
           ),
         );
@@ -153,6 +118,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final dropdownProvider = context.watch<DropdownProvider>();
+
     return Scaffold(
       backgroundColor: AppColor.retroCream,
       body: SafeArea(
@@ -162,13 +130,13 @@ class _RegisterPageState extends State<RegisterPage> {
             children: [
               _buildHeader(),
               const SizedBox(height: 32),
-              _isLoadingLists
+              dropdownProvider.isLoading
                   ? const Center(
                       child: CircularProgressIndicator(
                         color: AppColor.retroDarkRed,
                       ),
                     )
-                  : _buildRegisterCard(),
+                  : _buildRegisterCard(authProvider, dropdownProvider),
             ],
           ),
         ),
@@ -222,7 +190,12 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildRegisterCard() {
+  Widget _buildRegisterCard(
+    AuthProvider authProvider,
+    DropdownProvider dropdownProvider,
+  ) {
+    final bool isLoading = authProvider.isRegisterLoading;
+
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -234,8 +207,8 @@ class _RegisterPageState extends State<RegisterPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildTextFieldLabel('Full Name'),
-              _buildTextFormField(
+              CustomTextFormField(
+                label: 'Full Name',
                 controller: _nameController,
                 hintText: 'John Doe',
                 validator: (value) => (value == null || value.isEmpty)
@@ -244,8 +217,8 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               const SizedBox(height: 24),
 
-              _buildTextFieldLabel('Email Address'),
-              _buildTextFormField(
+              CustomTextFormField(
+                label: 'Email Address',
                 controller: _emailController,
                 hintText: 'your.email@example.com',
                 keyboardType: TextInputType.emailAddress,
@@ -255,11 +228,11 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               const SizedBox(height: 24),
 
-              _buildTextFieldLabel('Gender'),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedJenisKelamin,
-                hint: Text('Select Gender', style: _hintStyle()),
-                decoration: _buildInputDecoration(),
+              CustomDropdownFormField<String>(
+                label: 'Gender',
+                hintText: 'Select Gender',
+                value: _selectedJenisKelamin,
+                isExpanded: false,
                 items: const [
                   DropdownMenuItem(value: "L", child: Text("Laki-laki")),
                   DropdownMenuItem(value: "P", child: Text("Perempuan")),
@@ -274,13 +247,11 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               const SizedBox(height: 24),
 
-              _buildTextFieldLabel('Batch'),
-              DropdownButtonFormField<int>(
-                initialValue: _selectedBatchId,
-                isExpanded: true,
-                hint: Text('Select Batch', style: _hintStyle()),
-                decoration: _buildInputDecoration(),
-                items: _batchList.map((BatchData batch) {
+              CustomDropdownFormField<int>(
+                label: 'Batch',
+                hintText: 'Select Batch',
+                value: _selectedBatchId,
+                items: dropdownProvider.batchList.map((Batch batch) {
                   return DropdownMenuItem<int>(
                     value: batch.id,
                     child: Text(
@@ -299,13 +270,11 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               const SizedBox(height: 24),
 
-              _buildTextFieldLabel('Training'),
-              DropdownButtonFormField<int>(
-                initialValue: _selectedTrainingId,
-                isExpanded: true,
-                hint: Text('Select Training', style: _hintStyle()),
-                decoration: _buildInputDecoration(),
-                items: _trainingList.map((TrainingData training) {
+              CustomDropdownFormField<int>(
+                label: 'Training',
+                hintText: 'Select Training',
+                value: _selectedTrainingId,
+                items: dropdownProvider.trainingList.map((Training training) {
                   return DropdownMenuItem<int>(
                     value: training.id,
                     child: Text(
@@ -324,8 +293,8 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               const SizedBox(height: 24),
 
-              _buildTextFieldLabel('Password'),
-              _buildTextFormField(
+              CustomTextFormField(
+                label: 'Password',
                 controller: _passwordController,
                 hintText: '********',
                 obscureText: true,
@@ -335,7 +304,15 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               const SizedBox(height: 24),
 
-              _buildTextFieldLabel('Profile Photo (Optional)'),
+              Text(
+                'Profile Photo (Optional)',
+                style: TextStyle(
+                  color: AppColor.retroDarkRed,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8.0),
               Container(
                 decoration: BoxDecoration(
                   color: AppColor.retroCream.withOpacity(0.5),
@@ -370,8 +347,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: _isLoading ? null : _register,
-                child: _isLoading
+                onPressed: isLoading ? null : () => _register(authProvider),
+                child: isLoading
                     ? const SizedBox(
                         height: 24,
                         width: 24,
@@ -419,57 +396,6 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       ),
-    );
-  }
-
-  TextStyle _hintStyle() {
-    return TextStyle(color: AppColor.retroMediumRed.withOpacity(0.6));
-  }
-
-  InputDecoration _buildInputDecoration() {
-    return InputDecoration(
-      filled: true,
-      fillColor: AppColor.retroCream.withOpacity(0.5),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    );
-  }
-
-  Widget _buildTextFieldLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: AppColor.retroDarkRed,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  TextFormField _buildTextFormField({
-    required TextEditingController controller,
-    required String hintText,
-    TextInputType keyboardType = TextInputType.text,
-    bool obscureText = false,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: _buildInputDecoration().copyWith(
-        hintText: hintText,
-        hintStyle: _hintStyle(),
-      ),
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      style: TextStyle(color: AppColor.retroDarkRed),
-      validator: validator,
-      autovalidateMode: AutovalidateMode.onUserInteraction,
     );
   }
 }

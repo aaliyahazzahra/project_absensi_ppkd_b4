@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart'; // Untuk Lat/Long
-import 'package:intl/intl.dart'; // Untuk format tanggal dan waktu
-import 'package:permission_handler/permission_handler.dart'; // Untuk izin
+import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
+import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
 
-import '../../service/api.dart';
+import 'package:provider/provider.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_card.dart';
 
 class CheckInPage extends StatefulWidget {
   const CheckInPage({super.key});
@@ -14,12 +16,12 @@ class CheckInPage extends StatefulWidget {
 }
 
 class _CheckInPageState extends State<CheckInPage> {
-  final ApiService _apiService = ApiService();
-
   bool _isLoadingLocation = true;
-  bool _isLoadingApiCall = false;
   Position? _currentPosition;
   String _currentAddress = "Fetching location...";
+
+  // --- HAPUS ApiService _apiService ---
+  // --- HAPUS _isLoadingApiCall (Pindah ke Provider) ---
 
   @override
   void initState() {
@@ -27,6 +29,8 @@ class _CheckInPageState extends State<CheckInPage> {
     _getCurrentLocation();
   }
 
+  // Fungsi ini tetap sama, karena ini adalah logic UI (mengambil GPS)
+  // Ini tidak perlu dipindah ke provider.
   Future<void> _getCurrentLocation() async {
     setState(() {
       _isLoadingLocation = true;
@@ -39,6 +43,11 @@ class _CheckInPageState extends State<CheckInPage> {
         Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
         );
+
+        // TODO: Ganti ini dengan package geocoding untuk alamat asli
+        // List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+        // String address = placemarks.first.street ?? "Unknown location";
+
         setState(() {
           _currentPosition = position;
           _currentAddress = "Office Building, Main Street (Simulated)";
@@ -55,6 +64,8 @@ class _CheckInPageState extends State<CheckInPage> {
     }
   }
 
+  // --- FUNGSI CHECK IN DIPERBARUI ---
+  // Sekarang memanggil provider dan menangani hasil
   Future<void> _checkIn(BuildContext dialogContext) async {
     if (_currentPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -65,49 +76,43 @@ class _CheckInPageState extends State<CheckInPage> {
       return;
     }
 
-    (dialogContext as Element).markNeedsBuild();
-    setState(() {
-      _isLoadingApiCall = true;
-    });
+    // 1. Ambil provider (gunakan 'read' di dalam fungsi)
+    final provider = context.read<AttendanceProvider>();
 
-    try {
-      await _apiService.checkIn(
-        latitude: _currentPosition!.latitude,
-        longitude: _currentPosition!.longitude,
-        address: _currentAddress,
+    // 2. Panggil fungsi provider
+    final bool isSuccess = await provider.handleCheckIn(
+      latitude: _currentPosition!.latitude,
+      longitude: _currentPosition!.longitude,
+      address: _currentAddress,
+    );
+
+    if (!mounted) return;
+
+    // 3. Tutup dialog konfirmasi
+    Navigator.pop(dialogContext);
+
+    if (isSuccess) {
+      // 4. Jika sukses, tutup halaman CheckInPage
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Check-in successful!"),
+          backgroundColor: Colors.green[700],
+        ),
       );
-
-      if (mounted) {
-        Navigator.pop(dialogContext); 
-        Navigator.pop(context); 
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Check-in successful!"),
-            backgroundColor: Colors.green[700],
+    } else {
+      // 5. Jika gagal, tampilkan error dari provider
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Check-in Failed: ${provider.checkInErrorMessage?.replaceAll("Exception: ", "")}',
           ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(dialogContext); 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Check-in Failed: ${e.toString().replaceAll("Exception: ", "")}',
-            ),
-            backgroundColor: AppColor.retroDarkRed,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingApiCall = false;
-        });
-      }
+          backgroundColor: AppColor.retroDarkRed,
+        ),
+      );
     }
   }
+  // ---------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -128,22 +133,21 @@ class _CheckInPageState extends State<CheckInPage> {
                 children: [
                   _buildTimeCard(formattedDate, formattedTime),
                   const SizedBox(height: 24),
-                  _buildLocationCard(), 
+                  _buildLocationCard(),
                   const SizedBox(height: 24),
                   _buildPhotoCard(),
                 ],
               ),
             ),
           ),
-          _buildClockInButton(), 
+          _buildClockInButton(), // Tombol ini sekarang 'menonton' provider
         ],
       ),
     );
   }
 
-
-
   Widget _buildHeader(BuildContext context) {
+    // ... (Tidak ada perubahan di _buildHeader)
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -196,8 +200,9 @@ class _CheckInPageState extends State<CheckInPage> {
     );
   }
 
+  // --- MENGGUNAKAN CustomCard BARU ---
   Widget _buildTimeCard(String date, String time) {
-    return _buildBaseCard(
+    return CustomCard(
       child: Column(
         children: [
           Text(
@@ -222,8 +227,9 @@ class _CheckInPageState extends State<CheckInPage> {
     );
   }
 
+  // --- MENGGUNAKAN CustomCard BARU ---
   Widget _buildLocationCard() {
-    return _buildBaseCard(
+    return CustomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -242,7 +248,6 @@ class _CheckInPageState extends State<CheckInPage> {
             ],
           ),
           const SizedBox(height: 16),
-    
           Container(
             height: 150,
             decoration: BoxDecoration(
@@ -268,7 +273,7 @@ class _CheckInPageState extends State<CheckInPage> {
                           style: TextStyle(color: AppColor.retroMediumRed),
                         ),
                         Text(
-                          _currentAddress, 
+                          _currentAddress,
                           style: TextStyle(
                             color: AppColor.retroMediumRed,
                             fontWeight: FontWeight.w500,
@@ -284,8 +289,9 @@ class _CheckInPageState extends State<CheckInPage> {
     );
   }
 
+  // --- MENGGUNAKAN CustomCard BARU ---
   Widget _buildPhotoCard() {
-    return _buildBaseCard(
+    return CustomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -336,62 +342,65 @@ class _CheckInPageState extends State<CheckInPage> {
     );
   }
 
+  // --- MENGGUNAKAN Consumer UNTUK LOADING STATE ---
   Widget _buildClockInButton() {
-    final bool isButtonDisabled =
-        _isLoadingLocation || _currentPosition == null || _isLoadingApiCall;
+    // "Tonton" provider untuk mendapatkan status loading
+    return Consumer<AttendanceProvider>(
+      builder: (context, provider, child) {
+        final bool isApiLoading = provider.isCheckingIn;
+        final bool isButtonDisabled =
+            _isLoadingLocation || _currentPosition == null || isApiLoading;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      color: AppColor.retroCream,
-      child: ElevatedButton.icon(
-        icon: const Icon(Icons.check_circle_outline),
-        label: Text(
-          'Clock In Now',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isButtonDisabled
-              ? Colors.grey[400]
-              : AppColor.retroDarkRed,
-          foregroundColor: AppColor.retroCream,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          color: AppColor.retroCream,
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.check_circle_outline),
+            label: Text(
+              'Clock In Now',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isButtonDisabled
+                  ? Colors.grey[400]
+                  : AppColor.retroDarkRed,
+              foregroundColor: AppColor.retroCream,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: isButtonDisabled
+                ? null
+                : () {
+                    _showConfirmationDialog(context);
+                  },
           ),
-        ),
-        onPressed: isButtonDisabled
-            ? null
-            : () {
-                _showConfirmationDialog(context);
-              },
-      ),
+        );
+      },
     );
   }
 
+  // --- MENGGUNAKAN Consumer UNTUK LOADING STATE DI DIALOG ---
   void _showConfirmationDialog(BuildContext context) {
     final String confirmTime = DateFormat('hh:mm:ss a').format(DateTime.now());
 
     showDialog(
       context: context,
-      barrierDismissible: !_isLoadingApiCall,
+      // Gunakan 'watch' di sini agar loading state tidak mengizinkan dismiss
+      barrierDismissible: !context.read<AttendanceProvider>().isCheckingIn,
       builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
+        // Gunakan Consumer agar tombol di dalam dialog bisa update
+        return Consumer<AttendanceProvider>(
+          builder: (context, provider, child) {
+            final bool isApiLoading = provider.isCheckingIn;
+
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
               backgroundColor: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.all(24.0),
-                decoration: BoxDecoration(
-                  color: AppColor.retroCream,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColor.retroMediumRed.withOpacity(0.5),
-                    width: 2,
-                  ),
-                ),
+              child: CustomCard(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -414,7 +423,6 @@ class _CheckInPageState extends State<CheckInPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColor.retroDarkRed,
@@ -424,21 +432,13 @@ class _CheckInPageState extends State<CheckInPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: _isLoadingApiCall
+                      onPressed: isApiLoading
                           ? null
                           : () async {
-                              setDialogState(() {
-                                _isLoadingApiCall = true;
-                              });
+                              // Panggil _checkIn dan kirim context dialog
                               await _checkIn(dialogContext);
-                        
-                              if (mounted) {
-                                setState(() {
-                                  _isLoadingApiCall = false;
-                                });
-                              }
                             },
-                      child: _isLoadingApiCall
+                      child: isApiLoading
                           ? const SizedBox(
                               height: 24,
                               width: 24,
@@ -457,7 +457,6 @@ class _CheckInPageState extends State<CheckInPage> {
                             ),
                     ),
                     const SizedBox(height: 12),
-
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColor.kBackgroundColor,
@@ -472,7 +471,7 @@ class _CheckInPageState extends State<CheckInPage> {
                         ),
                         elevation: 0,
                       ),
-                      onPressed: _isLoadingApiCall
+                      onPressed: isApiLoading
                           ? null
                           : () {
                               Navigator.pop(dialogContext);
@@ -492,25 +491,6 @@ class _CheckInPageState extends State<CheckInPage> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildBaseCard({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: AppColor.kBackgroundColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColor.retroMediumRed.withOpacity(0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColor.retroMediumRed.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: child,
     );
   }
 }

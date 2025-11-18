@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/forgot_password_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/register_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/main_page.dart';
@@ -128,28 +129,14 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      TextFormField(
+                      CustomTextFormField(
+                        label: 'Email Address',
                         controller: _emailController,
-                        decoration: InputDecoration(
-                          hintText: 'your.email@example.com',
-                          hintStyle: TextStyle(
-                            color: AppColor.retroMediumRed.withOpacity(0.6),
-                          ),
-                          filled: true,
-                          fillColor: AppColor.retroCream.withOpacity(0.5),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
+                        hintText: 'your.email@example.com',
                         keyboardType: TextInputType.emailAddress,
-                        style: TextStyle(color: AppColor.retroDarkRed),
                       ),
                       const SizedBox(height: 24),
+
                       Text(
                         'Password',
                         style: TextStyle(
@@ -159,26 +146,11 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      TextFormField(
+                      CustomTextFormField(
+                        label: 'Password',
                         controller: _passwordController,
-                        decoration: InputDecoration(
-                          hintText: '********',
-                          hintStyle: TextStyle(
-                            color: AppColor.retroMediumRed.withOpacity(0.6),
-                          ),
-                          filled: true,
-                          fillColor: AppColor.retroCream.withOpacity(0.5),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
+                        hintText: '********',
                         obscureText: true,
-                        style: TextStyle(color: AppColor.retroDarkRed),
                       ),
                       const SizedBox(height: 16),
                       Align(

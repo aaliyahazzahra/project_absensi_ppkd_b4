@@ -3,7 +3,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:project_absensi_ppkd_b4/service/api.dart';
+import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
+
+import 'package:provider/provider.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_card.dart';
+// ------------------------------
 
 class CheckOutPage extends StatefulWidget {
   const CheckOutPage({super.key});
@@ -13,13 +17,10 @@ class CheckOutPage extends StatefulWidget {
 }
 
 class _CheckOutPageState extends State<CheckOutPage> {
-  final ApiService _apiService = ApiService();
-
+  // State lokal untuk UI
   bool _isLoadingLocation = true;
-  bool _isLoadingApiCall = false;
   Position? _currentPosition;
   String _currentAddress = "Fetching location...";
-  final String _clockInTime = "08:30 AM";
 
   @override
   void initState() {
@@ -39,6 +40,10 @@ class _CheckOutPageState extends State<CheckOutPage> {
         Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
         );
+
+        // TODO: Ganti ini dengan package geocoding untuk alamat asli
+        // List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+        // String address = placemarks.first.street ?? "Unknown location";
 
         setState(() {
           _currentPosition = position;
@@ -66,46 +71,40 @@ class _CheckOutPageState extends State<CheckOutPage> {
       return;
     }
 
-    setState(() {
-      _isLoadingApiCall = true;
-    });
+    // 1. Ambil provider
+    final provider = context.read<AttendanceProvider>();
 
-    try {
-      await _apiService.checkOut(
-        latitude: _currentPosition!.latitude,
-        longitude: _currentPosition!.longitude,
-        address: _currentAddress,
+    // 2. Panggil fungsi provider
+    final bool isSuccess = await provider.handleCheckOut(
+      latitude: _currentPosition!.latitude,
+      longitude: _currentPosition!.longitude,
+      address: _currentAddress,
+    );
+
+    if (!mounted) return;
+
+    // 3. Tutup dialog konfirmasi
+    Navigator.pop(dialogContext);
+
+    if (isSuccess) {
+      // 4. Jika sukses, tutup halaman CheckOutPage
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Check-out successful!"),
+          backgroundColor: Colors.green[700],
+        ),
       );
-
-      if (mounted) {
-        Navigator.pop(dialogContext);
-        Navigator.pop(context);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Check-out successful!"),
-            backgroundColor: Colors.green[700],
+    } else {
+      // 5. Jika gagal, tampilkan error dari provider
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Check-out Failed: ${provider.checkOutErrorMessage?.replaceAll("Exception: ", "")}',
           ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(dialogContext);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Check-out Failed: ${e.toString().replaceAll("Exception: ", "")}',
-            ),
-            backgroundColor: AppColor.retroDarkRed,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingApiCall = false;
-        });
-      }
+          backgroundColor: AppColor.retroDarkRed,
+        ),
+      );
     }
   }
 
@@ -114,6 +113,10 @@ class _CheckOutPageState extends State<CheckOutPage> {
     final now = DateTime.now();
     final String formattedDate = DateFormat('EEEE, MMMM d, yyyy').format(now);
     final String formattedTime = DateFormat('hh:mm:ss a').format(now);
+
+    final attendanceProvider = context.watch<AttendanceProvider>();
+    final String clockInTime =
+        attendanceProvider.todayStatus?.checkInTime ?? "--:--";
 
     return Scaffold(
       backgroundColor: AppColor.retroCream,
@@ -135,7 +138,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
               ),
             ),
           ),
-          _buildStatusBox(_clockInTime),
+          _buildStatusBox(clockInTime),
           _buildClockOutButton(),
         ],
       ),
@@ -194,7 +197,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
   }
 
   Widget _buildTimeCard(String date, String time) {
-    return _buildBaseCard(
+    return CustomCard(
       child: Column(
         children: [
           Text(
@@ -220,7 +223,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
   }
 
   Widget _buildLocationCard() {
-    return _buildBaseCard(
+    return CustomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -281,7 +284,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
   }
 
   Widget _buildPhotoCard() {
-    return _buildBaseCard(
+    return CustomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -366,59 +369,57 @@ class _CheckOutPageState extends State<CheckOutPage> {
   }
 
   Widget _buildClockOutButton() {
-    final bool isButtonDisabled =
-        _isLoadingLocation || _currentPosition == null || _isLoadingApiCall;
+    return Consumer<AttendanceProvider>(
+      builder: (context, provider, child) {
+        final bool isApiLoading = provider.isCheckingOut;
+        final bool isButtonDisabled =
+            _isLoadingLocation || _currentPosition == null || isApiLoading;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      color: AppColor.retroCream,
-      child: ElevatedButton.icon(
-        icon: const Icon(Icons.check_circle_outline),
-        label: Text(
-          'Clock Out Now',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isButtonDisabled
-              ? Colors.grey[400]
-              : AppColor.retroDarkRed,
-          foregroundColor: AppColor.retroCream,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          color: AppColor.retroCream,
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.check_circle_outline),
+            label: Text(
+              'Clock Out Now',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isButtonDisabled
+                  ? Colors.grey[400]
+                  : AppColor.retroDarkRed,
+              foregroundColor: AppColor.retroCream,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: isButtonDisabled
+                ? null
+                : () {
+                    _showClockOutConfirmationDialog(context);
+                  },
           ),
-        ),
-        onPressed: isButtonDisabled
-            ? null
-            : () {
-                _showClockOutConfirmationDialog(context);
-              },
-      ),
+        );
+      },
     );
   }
 
   void _showClockOutConfirmationDialog(BuildContext context) {
     showDialog(
       context: context,
-      barrierDismissible: !_isLoadingApiCall,
+      barrierDismissible: !context.read<AttendanceProvider>().isCheckingOut,
       builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
+        return Consumer<AttendanceProvider>(
+          builder: (context, provider, child) {
+            final bool isApiLoading = provider.isCheckingOut;
+
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
               backgroundColor: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.all(24.0),
-                decoration: BoxDecoration(
-                  color: AppColor.retroCream,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColor.retroMediumRed.withOpacity(0.5),
-                    width: 2,
-                  ),
-                ),
+              child: CustomCard(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -441,7 +442,6 @@ class _CheckOutPageState extends State<CheckOutPage> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColor.retroDarkRed,
@@ -451,20 +451,12 @@ class _CheckOutPageState extends State<CheckOutPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: _isLoadingApiCall
+                      onPressed: isApiLoading
                           ? null
                           : () async {
-                              setDialogState(() {
-                                _isLoadingApiCall = true;
-                              });
                               await _checkOut(dialogContext);
-                              if (mounted) {
-                                setState(() {
-                                  _isLoadingApiCall = false;
-                                });
-                              }
                             },
-                      child: _isLoadingApiCall
+                      child: isApiLoading
                           ? const SizedBox(
                               height: 24,
                               width: 24,
@@ -483,7 +475,6 @@ class _CheckOutPageState extends State<CheckOutPage> {
                             ),
                     ),
                     const SizedBox(height: 12),
-
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColor.kBackgroundColor,
@@ -498,7 +489,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
                         ),
                         elevation: 0,
                       ),
-                      onPressed: _isLoadingApiCall
+                      onPressed: isApiLoading
                           ? null
                           : () {
                               Navigator.pop(dialogContext);
@@ -518,25 +509,6 @@ class _CheckOutPageState extends State<CheckOutPage> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildBaseCard({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: AppColor.kBackgroundColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColor.retroMediumRed.withOpacity(0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColor.retroMediumRed.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: child,
     );
   }
 }

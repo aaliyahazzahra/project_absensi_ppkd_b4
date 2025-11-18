@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
 
-// Enum untuk status absensi
 enum AttendanceStatus { present, absent, late, weekend }
 
 class HistoryPage extends StatelessWidget {
@@ -73,10 +72,8 @@ class HistoryPage extends StatelessWidget {
       backgroundColor: AppColor.retroCream,
       body: Column(
         children: [
-          // --- 1. Header Kustom ---
           _buildHeader(),
 
-          // --- 2. Daftar Riwayat ---
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -98,9 +95,6 @@ class HistoryPage extends StatelessWidget {
     );
   }
 
-  // --- WIDGET BUILDER UNTUK KERAPIAN ---
-
-  // 1. Header (Judul dan Pilihan Bulan)
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
@@ -120,7 +114,6 @@ class HistoryPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          // Pilihan Bulan
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
@@ -148,7 +141,6 @@ class HistoryPage extends StatelessWidget {
     );
   }
 
-  // 2. Item Riwayat
   Widget _buildHistoryItem({
     required String day,
     required String date,
@@ -156,7 +148,6 @@ class HistoryPage extends StatelessWidget {
     required String checkOut,
     required AttendanceStatus status,
   }) {
-    // Helper untuk styling status
     final statusStyle = _getStatusStyle(status);
 
     return Container(
@@ -176,7 +167,6 @@ class HistoryPage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // --- Kotak Tanggal ---
           Container(
             width: 60,
             height: 60,
@@ -208,7 +198,6 @@ class HistoryPage extends StatelessWidget {
           ),
           const SizedBox(width: 16),
 
-          // --- Info Waktu ---
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,7 +210,6 @@ class HistoryPage extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                // --- Status Teks ---
                 Text(
                   statusStyle['text']!,
                   style: TextStyle(
@@ -271,9 +259,8 @@ class HistoryPage extends StatelessWidget {
         return {'text': 'Absent', 'color': AppColor.retroMediumRed};
       case AttendanceStatus.late:
         return {'text': 'Late', 'color': Colors.orange[800]};
-      case AttendanceStatus.weekend: // Cukup case ini
+      case AttendanceStatus.weekend:
         return {'text': 'Weekend', 'color': AppColor.retroLightRed};
-      // 'default:' dihapus karena semua case enum sudah ter-cover
     }
   }
 }

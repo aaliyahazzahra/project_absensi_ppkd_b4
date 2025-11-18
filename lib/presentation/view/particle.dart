@@ -1,9 +1,7 @@
-// lib/particle_painter.dart
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-// Kelas untuk menampung status setiap partikel
 class Particle {
   final Random random;
   late Offset position;
@@ -15,37 +13,28 @@ class Particle {
   late double rotationSpeed;
 
   Particle(this.random) {
-    // Inisialisasi ulang partikel dengan nilai acak
     _reset();
   }
 
-  // Mengatur ulang partikel ke status awal (dipakai saat partikel "mati")
   void _reset() {
-    // Mulai dari tengah
     position = const Offset(0, 0);
-    // Kecepatan acak ke arah luar
     velocity = Offset(
       (random.nextDouble() - 0.5) * 4,
       (random.nextDouble() - 0.5) * 4,
     );
-    radius = random.nextDouble() * 15 + 5; // Ukuran
-    opacity = random.nextDouble() * 0.5 + 0.3; // Opacity
+    radius = random.nextDouble() * 15 + 5;
+    opacity = random.nextDouble() * 0.5 + 0.3;
     rotation = random.nextDouble() * 2 * pi;
     rotationSpeed = (random.nextDouble() - 0.5) * 0.1;
   }
 
-  // Memperbarui status partikel di setiap frame
   void update(Size size) {
-    // Gerakkan partikel
     position += velocity;
 
-    // Perbarui rotasi
     rotation += rotationSpeed;
 
-    // Kurangi opacity seiring waktu
     opacity -= 0.005;
 
-    // Jika partikel tidak terlihat atau keluar layar, reset
     if (opacity <= 0 ||
         position.dx.abs() > size.width / 1.5 ||
         position.dy.abs() > size.height / 1.5) {
@@ -70,11 +59,9 @@ class ParticlePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Pindahkan titik 0,0 ke tengah layar
     canvas.translate(size.width / 2, size.height / 2);
 
     for (var particle in particles) {
-      // Update posisi & status partikel
       particle.update(size);
 
       // Pilih warna acak dari palet
@@ -96,7 +83,7 @@ class ParticlePainter extends CustomPainter {
         Rect.fromCenter(
           center: Offset.zero,
           width: particle.radius * 2,
-          height: particle.radius / 2, // Bentuk persegi panjang
+          height: particle.radius / 2,
         ),
         paint,
       );

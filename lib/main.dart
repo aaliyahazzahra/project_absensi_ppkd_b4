@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/login_page.dart';
+import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
+import 'package:project_absensi_ppkd_b4/provider/dropdown_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/profile_provider.dart';
+import 'package:project_absensi_ppkd_b4/repositories/attendance_repository.dart';
 import 'package:project_absensi_ppkd_b4/repositories/auth_repository.dart';
+import 'package:project_absensi_ppkd_b4/repositories/dropdown_repository.dart';
 import 'package:project_absensi_ppkd_b4/repositories/profile_repository.dart';
-import 'package:project_absensi_ppkd_b4/service/api.dart';
+import 'package:project_absensi_ppkd_b4/service/api_service.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -18,11 +22,14 @@ void main() {
               ProfileRepository(apiService: apiService),
         ),
 
-        ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
-          create: (context) =>
-              AuthProvider(repository: context.read<AuthRepository>()),
-          update: (_, repository, previousProvider) =>
-              previousProvider ?? AuthProvider(repository: repository),
+        ProxyProvider<ApiService, DropdownRepository>(
+          update: (_, apiService, __) =>
+              DropdownRepository(apiService: apiService),
+        ),
+
+        ProxyProvider<ApiService, AttendanceRepository>(
+          update: (_, apiService, __) =>
+              AttendanceRepository(apiService: apiService),
         ),
 
         ProxyProvider<ApiService, ProfileRepository>(
@@ -30,11 +37,32 @@ void main() {
               ProfileRepository(apiService: apiService),
         ),
 
+        ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
+          create: (context) =>
+              AuthProvider(repository: context.read<AuthRepository>()),
+          update: (_, repository, previousProvider) =>
+              previousProvider ?? AuthProvider(repository: repository),
+        ),
         ChangeNotifierProxyProvider<ProfileRepository, ProfileProvider>(
           create: (context) =>
               ProfileProvider(repository: context.read<ProfileRepository>()),
           update: (_, repository, previousProvider) =>
               previousProvider ?? ProfileProvider(repository: repository),
+        ),
+
+        ChangeNotifierProxyProvider<DropdownRepository, DropdownProvider>(
+          create: (context) =>
+              DropdownProvider(repository: context.read<DropdownRepository>()),
+          update: (_, repository, previous) =>
+              previous ?? DropdownProvider(repository: repository),
+        ),
+
+        ChangeNotifierProxyProvider<AttendanceRepository, AttendanceProvider>(
+          create: (context) => AttendanceProvider(
+            repository: context.read<AttendanceRepository>(),
+          ),
+          update: (_, repository, previous) =>
+              previous ?? AttendanceProvider(repository: repository),
         ),
       ],
       child: const MyApp(),

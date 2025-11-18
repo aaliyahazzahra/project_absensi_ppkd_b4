@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
+import 'package:project_absensi_ppkd_b4/provider/profile_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -9,26 +12,53 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  final TextEditingController _nameController = TextEditingController(
-    text: "Alexandra Bennett",
-  );
-  final TextEditingController _emailController = TextEditingController(
-    text: "alexandra.bennett@company.com",
-  );
-  final TextEditingController _phoneController = TextEditingController(
-    text: "+1 (555) 123-4567",
-  );
-  final TextEditingController _positionController = TextEditingController(
-    text: "Senior Designer",
-  );
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final profileProvider = context.read<ProfileProvider>();
+
+      _nameController.text = profileProvider.userProfile?.name ?? '';
+      _emailController.text = profileProvider.userProfile?.email ?? '';
+    });
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
-    _positionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveChanges(ProfileProvider provider) async {
+    final isSuccess = await provider.handleUpdateProfile(
+      name: _nameController.text,
+      email: _emailController.text,
+    );
+
+    if (!mounted) return;
+
+    if (isSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            provider.updateErrorMessage ?? 'Failed to update profile',
+          ),
+          backgroundColor: AppColor.retroDarkRed,
+        ),
+      );
+    }
   }
 
   @override
@@ -38,7 +68,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       body: Column(
         children: [
           _buildHeader(context),
-
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(
@@ -50,10 +79,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 children: [
                   _buildChangePhotoCard(),
                   const SizedBox(height: 24),
-
                   _buildInfoFormCard(),
                   const SizedBox(height: 24),
-
                   _buildActionButtons(context),
                 ],
               ),
@@ -162,31 +189,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildTextFieldLabel('Full Name'),
-          _buildTextFormField(
+          CustomTextFormField(
+            label: 'Full Name',
             controller: _nameController,
             hintText: 'Your full name',
           ),
           const SizedBox(height: 24),
-
-          _buildTextFieldLabel('Email Address'),
-          _buildTextFormField(
+          CustomTextFormField(
+            label: 'Email Address',
             controller: _emailController,
             hintText: 'your.email@example.com',
-          ),
-          const SizedBox(height: 24),
-
-          _buildTextFieldLabel('Phone Number'),
-          _buildTextFormField(
-            controller: _phoneController,
-            hintText: '+1 (555) 000-0000',
-          ),
-          const SizedBox(height: 24),
-
-          _buildTextFieldLabel('Position'),
-          _buildTextFormField(
-            controller: _positionController,
-            hintText: 'Your position',
           ),
         ],
       ),
@@ -194,51 +206,68 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColor.retroDarkRed,
-            foregroundColor: AppColor.retroCream,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+    return Consumer<ProfileProvider>(
+      builder: (context, provider, child) {
+        final bool isLoading = provider.isUpdating;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColor.retroDarkRed,
+                foregroundColor: AppColor.retroCream,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: isLoading ? null : () => _saveChanges(provider),
+              child: isLoading
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColor.retroCream,
+                        ),
+                        strokeWidth: 3,
+                      ),
+                    )
+                  : const Text(
+                      'Save Changes',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
             ),
-          ),
-          onPressed: () {
-            // TODO: Implement logic PUT /edit-profile
-          },
-          child: Text(
-            'Save Changes',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColor.kBackgroundColor,
-            foregroundColor: AppColor.retroDarkRed,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: AppColor.retroDarkRed, width: 2),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColor.kBackgroundColor,
+                foregroundColor: AppColor.retroDarkRed,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: AppColor.retroDarkRed, width: 2),
+                ),
+                elevation: 0,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
             ),
-            elevation: 0,
-          ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: Text(
-            'Cancel',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
-  // Helper Card dasar
   Widget _buildBaseCard({required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(24.0),
@@ -255,46 +284,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ],
       ),
       child: child,
-    );
-  }
-
-  // Helper Label
-  Widget _buildTextFieldLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: AppColor.retroDarkRed,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  // Helper Text Field
-  Widget _buildTextFormField({
-    required TextEditingController controller,
-    required String hintText,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: TextStyle(color: AppColor.retroMediumRed.withOpacity(0.6)),
-        filled: true,
-        fillColor: AppColor.retroCream.withOpacity(0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-      ),
-      style: TextStyle(color: AppColor.retroDarkRed),
     );
   }
 }

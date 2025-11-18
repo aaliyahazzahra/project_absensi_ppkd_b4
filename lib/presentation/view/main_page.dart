@@ -3,8 +3,7 @@ import 'package:project_absensi_ppkd_b4/core/app_color.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/profile_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/history_page.dart';
 
-// Import halaman dummy lainnya
-import 'home_page.dart'; // Halaman dashboard kita
+import 'home_page.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -16,7 +15,6 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
 
-  // Daftar halaman yang akan ditampilkan
   static const List<Widget> _pages = <Widget>[
     HomePage(), // Tab 1
     HistoryPage(), // Tab 2
@@ -33,8 +31,6 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColor.retroCream, // Background utama
-      body: _pages.elementAt(_selectedIndex), // Tampilkan halaman sesuai tab
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -60,14 +56,11 @@ class _MainPageState extends State<MainPage> {
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        // --- Styling untuk tema retro ---
-        type: BottomNavigationBarType.fixed, // Agar 4 item tetap terlihat
-        backgroundColor: AppColor.retroDarkRed, // Warna bar
-        selectedItemColor: AppColor.retroCream, // Warna ikon aktif
-        unselectedItemColor: AppColor.retroCream.withOpacity(
-          0.6,
-        ), // Ikon non-aktif
-        showUnselectedLabels: false, // Sembunyikan label non-aktif
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: AppColor.retroDarkRed,
+        selectedItemColor: AppColor.retroCream,
+        unselectedItemColor: AppColor.retroCream.withOpacity(0.6),
+        showUnselectedLabels: false,
         showSelectedLabels: true,
       ),
     );

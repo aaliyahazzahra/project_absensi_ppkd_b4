@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/check_in_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/check_out_page.dart';
+import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/profile_provider.dart';
+
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -18,20 +20,26 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProfileProvider>().fetchProfileData();
+      context.read<AttendanceProvider>().fetchTodayStatusData();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final profileProvider = context.watch<ProfileProvider>();
+    final attendanceProvider = context.watch<AttendanceProvider>();
 
     String userName = profileProvider.isLoading
         ? "Memuat..."
         : (profileProvider.userProfile?.name ?? "Pengguna");
 
-    // TODO: Data ini masih statis. Kita perlu Provider baru
-    String checkInTime = "08:30 AM";
-    String checkOutTime = "--:--";
+    String checkInTime = attendanceProvider.isLoadingStatus
+        ? "..."
+        : (attendanceProvider.todayStatus?.checkInTime ?? "--:--");
+
+    String checkOutTime = attendanceProvider.isLoadingStatus
+        ? "..."
+        : (attendanceProvider.todayStatus?.checkOutTime ?? "--:--");
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -39,7 +47,12 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildHeaderCard(userName, checkInTime, checkOutTime),
+            _buildHeaderCard(
+              userName,
+              checkInTime,
+              checkOutTime,
+              attendanceProvider.isLoadingStatus,
+            ),
             const SizedBox(height: 24),
 
             _buildActionButtons(context),
@@ -76,6 +89,7 @@ class _HomePageState extends State<HomePage> {
     String userName,
     String checkInTime,
     String checkOutTime,
+    bool isLoading,
   ) {
     return Container(
       padding: const EdgeInsets.all(20.0),
@@ -129,11 +143,20 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 12),
                 Center(
-                  child: Icon(
-                    Icons.check_circle_outline,
-                    color: AppColor.retroCream.withOpacity(0.7),
-                    size: 28,
-                  ),
+                  child: isLoading
+                      ? SizedBox(
+                          height: 28,
+                          width: 28,
+                          child: CircularProgressIndicator(
+                            color: AppColor.retroCream.withOpacity(0.7),
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : Icon(
+                          Icons.check_circle_outline,
+                          color: AppColor.retroCream.withOpacity(0.7),
+                          size: 28,
+                        ),
                 ),
               ],
             ),

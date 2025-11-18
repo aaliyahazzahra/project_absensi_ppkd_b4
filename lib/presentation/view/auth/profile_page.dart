@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/auth/login_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/edit_profile_page.dart';
+import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/profile_provider.dart';
 import 'package:provider/provider.dart';
-// TODO: Ganti dengan path Halaman Edit Profile Anda yang sebenarnya
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -20,7 +21,6 @@ class _ProfilePageState extends State<ProfilePage> {
       context.read<ProfileProvider>().fetchProfileData();
     });
   }
-  // ---------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +82,15 @@ class _ProfilePageState extends State<ProfilePage> {
                         title: "Logout",
                         isLogout: true,
                         onTap: () {
-                          // TODO: Implement logic Logout (Tugas 5.1)
+                          context.read<AuthProvider>().handleLogout();
+
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const LoginPage(),
+                            ),
+                            (route) => false,
+                          );
                         },
                       ),
                     ],
