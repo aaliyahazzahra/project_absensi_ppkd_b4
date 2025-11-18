@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:project_absensi_ppkd_b4/repositories/dropdown_repository.dart';
 import 'package:project_absensi_ppkd_b4/models/response/batches_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/training_response.dart';
+import 'package:project_absensi_ppkd_b4/repositories/dropdown_repository.dart';
 
 class DropdownProvider with ChangeNotifier {
-  final DropdownRepository _repository;
-  DropdownProvider({required DropdownRepository repository})
-    : _repository = repository;
+  DropdownRepository? _repository; // 1. Buat jadi nullable
+  DropdownProvider(); // 2. Kosongkan constructor
+
+  // 3. Tambahkan fungsi 'updateRepository'
+  void updateRepository(DropdownRepository repository) {
+    _repository = repository;
+  }
 
   bool _isLoading = true;
   List<Batch> _batchList = [];
@@ -19,6 +23,14 @@ class DropdownProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   Future<void> fetchDropdownData() async {
+    // 4. Tambahkan null check
+    if (_repository == null) {
+      _errorMessage = "Service not ready";
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
     if (!_isLoading || _batchList.isNotEmpty) return;
 
     _isLoading = true;
@@ -27,8 +39,8 @@ class DropdownProvider with ChangeNotifier {
 
     try {
       final responses = await Future.wait([
-        _repository.fetchBatches(),
-        _repository.fetchTrainings(),
+        _repository!.fetchBatches(),
+        _repository!.fetchTrainings(),
       ]);
 
       _batchList = responses[0] as List<Batch>;

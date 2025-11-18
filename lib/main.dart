@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/login_page.dart';
 import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
-import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/dropdown_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/profile_provider.dart';
 import 'package:project_absensi_ppkd_b4/repositories/attendance_repository.dart';
@@ -16,6 +15,10 @@ void main() {
     MultiProvider(
       providers: [
         Provider<ApiService>(create: (_) => ApiService()),
+
+        ProxyProvider<ApiService, AuthRepository>(
+          update: (_, apiService, __) => AuthRepository(apiService: apiService),
+        ),
 
         ProxyProvider<ApiService, ProfileRepository>(
           update: (_, apiService, __) =>
@@ -32,37 +35,43 @@ void main() {
               AttendanceRepository(apiService: apiService),
         ),
 
+        ProxyProvider<ApiService, AuthRepository>(
+          update: (_, apiService, __) => AuthRepository(apiService: apiService),
+        ),
         ProxyProvider<ApiService, ProfileRepository>(
           update: (_, apiService, __) =>
               ProfileRepository(apiService: apiService),
         ),
-
-        ChangeNotifierProxyProvider<AuthRepository, AuthProvider>(
-          create: (context) =>
-              AuthProvider(repository: context.read<AuthRepository>()),
-          update: (_, repository, previousProvider) =>
-              previousProvider ?? AuthProvider(repository: repository),
+        ProxyProvider<ApiService, DropdownRepository>(
+          update: (_, apiService, __) =>
+              DropdownRepository(apiService: apiService),
+        ),
+        ProxyProvider<ApiService, AttendanceRepository>(
+          update: (_, apiService, __) =>
+              AttendanceRepository(apiService: apiService),
         ),
         ChangeNotifierProxyProvider<ProfileRepository, ProfileProvider>(
-          create: (context) =>
-              ProfileProvider(repository: context.read<ProfileRepository>()),
-          update: (_, repository, previousProvider) =>
-              previousProvider ?? ProfileProvider(repository: repository),
+          create: (context) => ProfileProvider(),
+          update: (context, repository, previousProvider) {
+            previousProvider!.updateRepository(repository);
+            return previousProvider;
+          },
         ),
 
         ChangeNotifierProxyProvider<DropdownRepository, DropdownProvider>(
-          create: (context) =>
-              DropdownProvider(repository: context.read<DropdownRepository>()),
-          update: (_, repository, previous) =>
-              previous ?? DropdownProvider(repository: repository),
+          create: (context) => DropdownProvider(),
+          update: (context, repository, previous) {
+            previous!.updateRepository(repository);
+            return previous;
+          },
         ),
 
         ChangeNotifierProxyProvider<AttendanceRepository, AttendanceProvider>(
-          create: (context) => AttendanceProvider(
-            repository: context.read<AttendanceRepository>(),
-          ),
-          update: (_, repository, previous) =>
-              previous ?? AttendanceProvider(repository: repository),
+          create: (context) => AttendanceProvider(),
+          update: (context, repository, previous) {
+            previous!.updateRepository(repository);
+            return previous;
+          },
         ),
       ],
       child: const MyApp(),
@@ -95,7 +104,13 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: LoginPage(),
+      home: Builder(
+        builder: (context) {
+          // 'context' ini dijamin berada DI DALAM MaterialApp,
+          // yang berarti juga DI BAWAH MultiProvider.
+          return const LoginPage();
+        },
+      ),
     );
   }
 }

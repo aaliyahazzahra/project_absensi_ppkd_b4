@@ -5,10 +5,14 @@ import 'package:project_absensi_ppkd_b4/repositories/profile_repository.dart';
 
 // 'ChangeNotifier' untuk memberi tahu UI jika ada perubahan state
 class ProfileProvider with ChangeNotifier {
-  final ProfileRepository _repository;
+  ProfileRepository? _repository; // 1. Buat jadi nullable
 
-  ProfileProvider({required ProfileRepository repository})
-    : _repository = repository;
+  ProfileProvider(); // 2. Kosongkan constructor
+
+  // 3. Tambahkan fungsi 'updateRepository'
+  void updateRepository(ProfileRepository repository) {
+    _repository = repository;
+  }
 
   // --- State Variables ---
   bool _isLoading = false;
@@ -28,13 +32,21 @@ class ProfileProvider with ChangeNotifier {
 
   // --- Logic Function ---
   Future<void> fetchProfileData() async {
+    // 4. Tambahkan null check
+    if (_repository == null) {
+      _errorMessage = "Service not ready";
+      _isLoading = false;
+      notifyListeners();
+      return;
+    }
+
     // 1. Set state ke loading
     _isLoading = true;
     _errorMessage = null;
 
     try {
       // 2. Panggil REPOSITORY, bukan ApiService
-      final data = await _repository.fetchProfile();
+      final data = await _repository!.fetchProfile(); // 5. Gunakan '!'
       _userProfile = data;
     } catch (e) {
       // 3. Tangani error
@@ -51,6 +63,14 @@ class ProfileProvider with ChangeNotifier {
     required String name,
     required String email,
   }) async {
+    // 4. Tambahkan null check
+    if (_repository == null) {
+      _updateErrorMessage = "Service not ready";
+      _isUpdating = false;
+      notifyListeners();
+      return false;
+    }
+
     // 1. Set state ke loading
     _isUpdating = true;
     _updateErrorMessage = null;
@@ -58,7 +78,8 @@ class ProfileProvider with ChangeNotifier {
 
     try {
       // 2. Panggil REPOSITORY
-      final updatedData = await _repository.updateProfile(
+      final updatedData = await _repository!.updateProfile(
+        // 5. Gunakan '!'
         name: name,
         email: email,
       );

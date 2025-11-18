@@ -3,9 +3,13 @@ import 'package:project_absensi_ppkd_b4/models/response/today_status_response.da
 import 'package:project_absensi_ppkd_b4/repositories/attendance_repository.dart';
 
 class AttendanceProvider with ChangeNotifier {
-  final AttendanceRepository _repository;
-  AttendanceProvider({required AttendanceRepository repository})
-    : _repository = repository;
+  AttendanceRepository? _repository; // 1. Buat jadi nullable
+  AttendanceProvider(); // 2. Kosongkan constructor
+
+  // 3. Tambahkan fungsi 'updateRepository'
+  void updateRepository(AttendanceRepository repository) {
+    _repository = repository;
+  }
 
   bool _isLoadingStatus = false;
   TodayStatusData? _todayStatus;
@@ -28,11 +32,19 @@ class AttendanceProvider with ChangeNotifier {
   String? get checkOutErrorMessage => _checkOutErrorMessage;
 
   Future<void> fetchTodayStatusData() async {
+    // 4. Tambahkan null check
+    if (_repository == null) {
+      _statusErrorMessage = "Service not ready";
+      _isLoadingStatus = false;
+      notifyListeners();
+      return;
+    }
+
     _isLoadingStatus = true;
     _statusErrorMessage = null;
 
     try {
-      _todayStatus = await _repository.fetchTodayStatus();
+      _todayStatus = await _repository!.fetchTodayStatus();
     } catch (e) {
       _statusErrorMessage = e.toString();
     } finally {
@@ -46,13 +58,22 @@ class AttendanceProvider with ChangeNotifier {
     required double longitude,
     required String address,
   }) async {
+    // 4. Tambahkan null check
+    if (_repository == null) {
+      _checkInErrorMessage = "Service not ready";
+      _isCheckingIn = false;
+      notifyListeners();
+      return false;
+    }
+
     _isCheckingIn = true;
     _checkInErrorMessage = null;
     notifyListeners();
 
     try {
       // 1. Panggil REPOSITORY
-      await _repository.checkIn(
+      await _repository!.checkIn(
+        // 5. Gunakan '!'
         latitude: latitude,
         longitude: longitude,
         address: address,
@@ -78,20 +99,28 @@ class AttendanceProvider with ChangeNotifier {
     required double longitude,
     required String address,
   }) async {
+    // 4. Tambahkan null check
+    if (_repository == null) {
+      _checkOutErrorMessage = "Service not ready";
+      _isCheckingOut = false;
+      notifyListeners();
+      return false;
+    }
+
     _isCheckingOut = true;
     _checkOutErrorMessage = null;
     notifyListeners();
 
     try {
       // 1. Panggil REPOSITORY
-      await _repository.checkOut(
+      await _repository!.checkOut(
+        // 5. Gunakan '!'
         latitude: latitude,
         longitude: longitude,
         address: address,
       );
 
       // 2. JIKA SUKSES:
-
       await fetchTodayStatusData();
 
       _isCheckingOut = false;

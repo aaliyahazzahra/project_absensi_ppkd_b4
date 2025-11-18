@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/repositories/auth_repository.dart';
 
 class AuthProvider with ChangeNotifier {
-  final AuthRepository _repository;
+  AuthRepository? _repository; // 1. Buat jadi nullable
 
-  AuthProvider({required AuthRepository repository}) : _repository = repository;
+  // 2. Kosongkan constructor (tidak perlu 'required repository' lagi)
+  AuthProvider();
 
-  bool _isLoading = false; // Untuk login
-  String? _errorMessage; // Error login
-  bool _isLoggedIn = false; // Penanda sukses login
-  bool _isRegisterLoading = false; // Untuk register
-  String? _registerErrorMessage; // Error register
+  // 3. Buat fungsi untuk "menyuntik" repository nanti
+  void updateRepository(AuthRepository repository) {
+    _repository = repository;
+  }
+
+  bool _isLoading = false;
+  String? _errorMessage;
+  bool _isLoggedIn = false;
+  bool _isRegisterLoading = false;
+  String? _registerErrorMessage;
 
   bool get isLoading => _isLoading;
   bool get isRegisterLoading => _isRegisterLoading;
@@ -18,23 +24,26 @@ class AuthProvider with ChangeNotifier {
   String? get registerErrorMessage => _registerErrorMessage;
   bool get isLoggedIn => _isLoggedIn;
 
+  // 4. Tambahkan null check di semua fungsi yang memakai _repository
   Future<bool> handleLogin(String email, String password) async {
-    // 1. Set state ke loading
+    // Tambahkan Pengecekan
+    if (_repository == null) {
+      _errorMessage = "Service not ready";
+      notifyListeners();
+      return false;
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      // 2. Panggil REPOSITORY
-      await _repository.login(email, password);
-
-      // 3. Jika sukses
+      await _repository!.login(email, password); // Gunakan '!'
       _isLoggedIn = true;
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      // 4. Jika gagal (misal password salah)
       _errorMessage = e.toString();
       _isLoggedIn = false;
       _isLoading = false;
@@ -52,14 +61,20 @@ class AuthProvider with ChangeNotifier {
     required int? batchId,
     required int? trainingId,
   }) async {
-    // 1. Set state ke loading
+    // Tambahkan Pengecekan
+    if (_repository == null) {
+      _registerErrorMessage = "Service not ready";
+      notifyListeners();
+      return false;
+    }
+
     _isRegisterLoading = true;
     _registerErrorMessage = null;
     notifyListeners();
 
     try {
-      // 2. Panggil REPOSITORY
-      await _repository.register(
+      await _repository!.register(
+        // Gunakan '!'
         name: name,
         email: email,
         password: password,
@@ -68,14 +83,11 @@ class AuthProvider with ChangeNotifier {
         batchId: batchId,
         trainingId: trainingId,
       );
-
-      // 3. Jika sukses
       _isLoggedIn = true;
       _isRegisterLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      // 4. Jika gagal
       _registerErrorMessage = e.toString();
       _isLoggedIn = false;
       _isRegisterLoading = false;
@@ -85,8 +97,16 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> handleLogout() async {
+    // Tambahkan Pengecekan
+    if (_repository == null) {
+      print("Logout failed: repository is null");
+      _isLoggedIn = false;
+      notifyListeners();
+      return;
+    }
+
     try {
-      await _repository.logout();
+      await _repository!.logout(); // Gunakan '!'
     } catch (e) {
       print("Error during logout: $e");
     } finally {

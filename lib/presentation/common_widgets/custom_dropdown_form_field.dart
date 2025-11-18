@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
 
 class CustomDropdownFormField<T> extends StatelessWidget {
@@ -54,7 +53,7 @@ class CustomDropdownFormField<T> extends StatelessWidget {
         const SizedBox(height: 8.0),
 
         DropdownButtonFormField<T>(
-          value: value,
+          initialValue: value,
           isExpanded: isExpanded,
           hint: Text(hintText, style: _hintStyle()),
           decoration: _buildInputDecoration(),
