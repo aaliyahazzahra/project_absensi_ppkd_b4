@@ -6,10 +6,9 @@ BatchesResponse batchesResponseFromJson(String str) =>
 String batchesResponseToJson(BatchesResponse data) =>
     json.encode(data.toJson());
 
-
 class BatchesResponse {
   String? message;
-  List<Batch>? data; 
+  List<Batch>? data;
 
   BatchesResponse({this.message, this.data});
 
@@ -29,7 +28,6 @@ class BatchesResponse {
   };
 }
 
-
 class Batch {
   int? id;
   String? batchKe;
@@ -37,8 +35,7 @@ class Batch {
   DateTime? endDate;
   DateTime? createdAt;
   DateTime? updatedAt;
-  List<TrainingNested>?
-  trainings; 
+  List<TrainingNested>? trainings;
 
   Batch({
     this.id,
