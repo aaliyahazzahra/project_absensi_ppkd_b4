@@ -147,6 +147,9 @@ class ApiService {
     required double latitude,
     required double longitude,
     required String address,
+    required String attendanceDate,
+    required String checkInTime,
+    required String status,
   }) async {
     final String? token = await _getToken();
     if (token == null) throw Exception('Token not found');
@@ -159,11 +162,14 @@ class ApiService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
+        // Tambahkan parameter baru ke body
         body: jsonEncode({
           'check_in_lat': latitude,
           'check_in_lng': longitude,
           'check_in_address': address,
-          'status': 'masuk',
+          'attendance_date': attendanceDate,
+          'check_in': checkInTime,
+          'status': status,
         }),
       );
 
@@ -177,6 +183,12 @@ class ApiService {
           throw Exception('Check-in successful but no data received');
         }
       } else {
+        // Parsing error dari Laravel
+        if (responseBody['errors'] != null) {
+          final errors = responseBody['errors'] as Map<String, dynamic>;
+          final errorMessages = errors.values.map((e) => e[0]).join('. ');
+          throw Exception('Check-in Failed: $errorMessages');
+        }
         throw Exception(responseBody['message'] ?? 'Check-in failed');
       }
     } catch (e) {
@@ -188,6 +200,8 @@ class ApiService {
     required double latitude,
     required double longitude,
     required String address,
+    required String attendanceDate,
+    required String checkOutTime,
   }) async {
     final String? token = await _getToken();
     if (token == null) throw Exception('Token not found');
@@ -200,10 +214,13 @@ class ApiService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
+        // Tambahkan parameter baru ke body
         body: jsonEncode({
           'check_out_lat': latitude,
           'check_out_lng': longitude,
           'check_out_address': address,
+          'attendance_date': attendanceDate,
+          'check_out': checkOutTime,
         }),
       );
 
@@ -217,6 +234,12 @@ class ApiService {
           throw Exception('Check-out successful but no data received');
         }
       } else {
+        // Parsing error dari Laravel
+        if (responseBody['errors'] != null) {
+          final errors = responseBody['errors'] as Map<String, dynamic>;
+          final errorMessages = errors.values.map((e) => e[0]).join('. ');
+          throw Exception('Check-out Failed: $errorMessages');
+        }
         throw Exception(responseBody['message'] ?? 'Check-out failed');
       }
     } catch (e) {
@@ -339,7 +362,6 @@ class ApiService {
     // untuk meng-logout-kan user dari APLIKASI.
 
     try {
-      // Panggil helper yang baru kita buat
       await _removeToken();
     } catch (e) {
       throw Exception('Failed to remove token: $e');

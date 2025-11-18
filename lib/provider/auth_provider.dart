@@ -39,13 +39,11 @@ class AuthProvider with ChangeNotifier {
 
     try {
       await _repository!.login(email, password); // Gunakan '!'
-      _isLoggedIn = true;
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
       _errorMessage = e.toString();
-      _isLoggedIn = false;
       _isLoading = false;
       notifyListeners();
       return false;

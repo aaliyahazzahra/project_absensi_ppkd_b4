@@ -4,15 +4,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:project_absensi_ppkd_b4/presentation/view/main_page.dart';
-import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
-import 'package:project_absensi_ppkd_b4/provider/dropdown_provider.dart';
-
-import 'package:provider/provider.dart';
-import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
-import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_dropdown_form_field.dart';
 import 'package:project_absensi_ppkd_b4/models/response/batches_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/training_response.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_dropdown_form_field.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/auth/login_page.dart';
+import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
+import 'package:project_absensi_ppkd_b4/provider/dropdown_provider.dart';
+import 'package:provider/provider.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -93,9 +92,16 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (isSuccess) {
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration successful! Please log in.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const MainPage()),
+          MaterialPageRoute(builder: (context) => const LoginPage()),
           (route) => false,
         );
       }

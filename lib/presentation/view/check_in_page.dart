@@ -1,12 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
-
-import 'package:provider/provider.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_card.dart';
+import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
+import 'package:provider/provider.dart';
 
 class CheckInPage extends StatefulWidget {
   const CheckInPage({super.key});
@@ -20,8 +23,10 @@ class _CheckInPageState extends State<CheckInPage> {
   Position? _currentPosition;
   String _currentAddress = "Fetching location...";
 
-  // --- HAPUS ApiService _apiService ---
-  // --- HAPUS _isLoadingApiCall (Pindah ke Provider) ---
+  final Completer<GoogleMapController> _mapController = Completer();
+  Marker? _marker;
+
+  static const LatLng _kDefaultPosition = LatLng(-6.1753924, 106.8271528);
 
   @override
   void initState() {
@@ -29,8 +34,6 @@ class _CheckInPageState extends State<CheckInPage> {
     _getCurrentLocation();
   }
 
-  // Fungsi ini tetap sama, karena ini adalah logic UI (mengambil GPS)
-  // Ini tidak perlu dipindah ke provider.
   Future<void> _getCurrentLocation() async {
     setState(() {
       _isLoadingLocation = true;
@@ -44,15 +47,38 @@ class _CheckInPageState extends State<CheckInPage> {
           desiredAccuracy: LocationAccuracy.high,
         );
 
-        // TODO: Ganti ini dengan package geocoding untuk alamat asli
-        // List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
-        // String address = placemarks.first.street ?? "Unknown location";
+        final LatLng latLng = LatLng(position.latitude, position.longitude);
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+
+        String address = "Alamat tidak ditemukan";
+        if (placemarks.isNotEmpty) {
+          Placemark place = placemarks[0];
+          address = "${place.street}, ${place.subLocality}, ${place.locality}";
+        }
+
+        _marker = Marker(
+          markerId: const MarkerId("lokasi_saya"),
+          position: latLng,
+          infoWindow: InfoWindow(title: 'Lokasi Anda', snippet: address),
+        );
 
         setState(() {
           _currentPosition = position;
-          _currentAddress = "Office Building, Main Street (Simulated)";
+          _currentAddress = address;
           _isLoadingLocation = false;
         });
+
+        // --- Logika Animasi Kamera dari PDF ---
+        final GoogleMapController controller = await _mapController.future;
+        controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: latLng, zoom: 16),
+          ),
+        );
+        // ---------------------------------
       } else {
         throw Exception('Location permission denied');
       }
@@ -64,8 +90,6 @@ class _CheckInPageState extends State<CheckInPage> {
     }
   }
 
-  // --- FUNGSI CHECK IN DIPERBARUI ---
-  // Sekarang memanggil provider dan menangani hasil
   Future<void> _checkIn(BuildContext dialogContext) async {
     if (_currentPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -76,23 +100,23 @@ class _CheckInPageState extends State<CheckInPage> {
       return;
     }
 
-    // 1. Ambil provider (gunakan 'read' di dalam fungsi)
     final provider = context.read<AttendanceProvider>();
-
-    // 2. Panggil fungsi provider
+    final now = DateTime.now();
+    final String attendanceDate = DateFormat('yyyy-MM-dd').format(now);
+    final String checkInTime = DateFormat('HH:mm').format(now);
     final bool isSuccess = await provider.handleCheckIn(
       latitude: _currentPosition!.latitude,
       longitude: _currentPosition!.longitude,
       address: _currentAddress,
+      attendanceDate: attendanceDate,
+      checkInTime: checkInTime,
+      status: "masuk",
     );
 
     if (!mounted) return;
-
-    // 3. Tutup dialog konfirmasi
     Navigator.pop(dialogContext);
 
     if (isSuccess) {
-      // 4. Jika sukses, tutup halaman CheckInPage
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -101,7 +125,6 @@ class _CheckInPageState extends State<CheckInPage> {
         ),
       );
     } else {
-      // 5. Jika gagal, tampilkan error dari provider
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -112,7 +135,6 @@ class _CheckInPageState extends State<CheckInPage> {
       );
     }
   }
-  // ---------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -140,14 +162,13 @@ class _CheckInPageState extends State<CheckInPage> {
               ),
             ),
           ),
-          _buildClockInButton(), // Tombol ini sekarang 'menonton' provider
+          _buildClockInButton(),
         ],
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context) {
-    // ... (Tidak ada perubahan di _buildHeader)
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -200,7 +221,6 @@ class _CheckInPageState extends State<CheckInPage> {
     );
   }
 
-  // --- MENGGUNAKAN CustomCard BARU ---
   Widget _buildTimeCard(String date, String time) {
     return CustomCard(
       child: Column(
@@ -227,7 +247,6 @@ class _CheckInPageState extends State<CheckInPage> {
     );
   }
 
-  // --- MENGGUNAKAN CustomCard BARU ---
   Widget _buildLocationCard() {
     return CustomCard(
       child: Column(
@@ -248,48 +267,62 @@ class _CheckInPageState extends State<CheckInPage> {
             ],
           ),
           const SizedBox(height: 16),
+
           Container(
-            height: 150,
+            height: 250,
             decoration: BoxDecoration(
               color: AppColor.retroCream.withOpacity(0.5),
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Center(
+
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
               child: _isLoadingLocation
-                  ? const CircularProgressIndicator(
-                      color: AppColor.retroDarkRed,
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColor.retroDarkRed,
+                      ),
                     )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.map_outlined,
-                          size: 40,
-                          color: AppColor.retroMediumRed,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Map View Placeholder',
-                          style: TextStyle(color: AppColor.retroMediumRed),
-                        ),
-                        Text(
-                          _currentAddress,
-                          style: TextStyle(
-                            color: AppColor.retroMediumRed,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                  : GoogleMap(
+                      mapType: MapType.normal,
+                      initialCameraPosition: CameraPosition(
+                        target: _kDefaultPosition,
+                        zoom: 14,
+                      ),
+                      onMapCreated: (GoogleMapController controller) {
+                        if (!_mapController.isCompleted) {
+                          _mapController.complete(controller);
+                        }
+                      },
+                      markers: _marker == null
+                          ? {}
+                          : {_marker!}, // Tampilkan marker
+                      myLocationEnabled:
+                          false, // Matikan titik biru (sudah ada marker)
+                      myLocationButtonEnabled: true, // Matikan tombol lokasi
+                      zoomControlsEnabled: true, // Izinkan zoom
                     ),
             ),
+          ),
+
+          // -----------------------------------
+          const SizedBox(height: 16),
+          // Tampilkan alamat di bawah peta
+          Text(
+            _isLoadingLocation ? "Fetching location..." : _currentAddress,
+            style: TextStyle(
+              color: AppColor.retroMediumRed,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 
-  // --- MENGGUNAKAN CustomCard BARU ---
+  // ... (Sisa kode: _buildPhotoCard, _buildClockInButton, _showConfirmationDialog tidak berubah)
+
   Widget _buildPhotoCard() {
     return CustomCard(
       child: Column(
@@ -342,9 +375,7 @@ class _CheckInPageState extends State<CheckInPage> {
     );
   }
 
-  // --- MENGGUNAKAN Consumer UNTUK LOADING STATE ---
   Widget _buildClockInButton() {
-    // "Tonton" provider untuk mendapatkan status loading
     return Consumer<AttendanceProvider>(
       builder: (context, provider, child) {
         final bool isApiLoading = provider.isCheckingIn;
@@ -381,16 +412,13 @@ class _CheckInPageState extends State<CheckInPage> {
     );
   }
 
-  // --- MENGGUNAKAN Consumer UNTUK LOADING STATE DI DIALOG ---
   void _showConfirmationDialog(BuildContext context) {
     final String confirmTime = DateFormat('hh:mm:ss a').format(DateTime.now());
 
     showDialog(
       context: context,
-      // Gunakan 'watch' di sini agar loading state tidak mengizinkan dismiss
       barrierDismissible: !context.read<AttendanceProvider>().isCheckingIn,
       builder: (BuildContext dialogContext) {
-        // Gunakan Consumer agar tombol di dalam dialog bisa update
         return Consumer<AttendanceProvider>(
           builder: (context, provider, child) {
             final bool isApiLoading = provider.isCheckingIn;
@@ -435,7 +463,6 @@ class _CheckInPageState extends State<CheckInPage> {
                       onPressed: isApiLoading
                           ? null
                           : () async {
-                              // Panggil _checkIn dan kirim context dialog
                               await _checkIn(dialogContext);
                             },
                       child: isApiLoading

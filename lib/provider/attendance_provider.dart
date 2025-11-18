@@ -57,8 +57,10 @@ class AttendanceProvider with ChangeNotifier {
     required double latitude,
     required double longitude,
     required String address,
+    required String attendanceDate,
+    required String checkInTime,
+    required String status,
   }) async {
-    // 4. Tambahkan null check
     if (_repository == null) {
       _checkInErrorMessage = "Service not ready";
       _isCheckingIn = false;
@@ -71,25 +73,24 @@ class AttendanceProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Panggil REPOSITORY
       await _repository!.checkIn(
-        // 5. Gunakan '!'
         latitude: latitude,
         longitude: longitude,
         address: address,
+        attendanceDate: attendanceDate,
+        checkInTime: checkInTime,
+        status: status,
       );
 
-      // 2. JIKA SUKSES:
       await fetchTodayStatusData();
 
       _isCheckingIn = false;
-      notifyListeners(); // Beri tahu UI "Check-in selesai!"
+      notifyListeners();
       return true;
     } catch (e) {
-      // 3. JIKA GAGAL:
       _checkInErrorMessage = e.toString();
       _isCheckingIn = false;
-      notifyListeners(); // Beri tahu UI "Gagal check-in!"
+      notifyListeners();
       return false;
     }
   }
@@ -98,8 +99,9 @@ class AttendanceProvider with ChangeNotifier {
     required double latitude,
     required double longitude,
     required String address,
+    required String attendanceDate,
+    required String checkOutTime,
   }) async {
-    // 4. Tambahkan null check
     if (_repository == null) {
       _checkOutErrorMessage = "Service not ready";
       _isCheckingOut = false;
@@ -118,6 +120,8 @@ class AttendanceProvider with ChangeNotifier {
         latitude: latitude,
         longitude: longitude,
         address: address,
+        attendanceDate: attendanceDate,
+        checkOutTime: checkOutTime,
       );
 
       // 2. JIKA SUKSES:

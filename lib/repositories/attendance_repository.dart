@@ -9,7 +9,6 @@ class AttendanceRepository {
   AttendanceRepository({required ApiService apiService})
     : _apiService = apiService;
 
-  // Mengambil status absensi hari ini
   Future<TodayStatusData?> fetchTodayStatus() async {
     try {
       final statusData = await _apiService.getTodayStatus();
@@ -23,12 +22,18 @@ class AttendanceRepository {
     required double latitude,
     required double longitude,
     required String address,
+    required String attendanceDate,
+    required String checkInTime,
+    required String status,
   }) async {
     try {
       final checkInData = await _apiService.checkIn(
         latitude: latitude,
         longitude: longitude,
         address: address,
+        attendanceDate: attendanceDate,
+        checkInTime: checkInTime,
+        status: status,
       );
       return checkInData;
     } catch (e) {
@@ -40,17 +45,19 @@ class AttendanceRepository {
     required double latitude,
     required double longitude,
     required String address,
+    required String attendanceDate,
+    required String checkOutTime,
   }) async {
     try {
-      // Panggil fungsi checkOut dari ApiService
       final checkOutData = await _apiService.checkOut(
         latitude: latitude,
         longitude: longitude,
         address: address,
+        attendanceDate: attendanceDate,
+        checkOutTime: checkOutTime,
       );
       return checkOutData;
     } catch (e) {
-      // Teruskan error (misal: "Belum check in") ke Provider
       rethrow;
     }
   }

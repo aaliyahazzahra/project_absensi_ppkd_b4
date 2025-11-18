@@ -1,13 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
-
-import 'package:provider/provider.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_card.dart';
-// ------------------------------
+import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
+import 'package:provider/provider.dart';
 
 class CheckOutPage extends StatefulWidget {
   const CheckOutPage({super.key});
@@ -17,10 +19,14 @@ class CheckOutPage extends StatefulWidget {
 }
 
 class _CheckOutPageState extends State<CheckOutPage> {
-  // State lokal untuk UI
   bool _isLoadingLocation = true;
   Position? _currentPosition;
   String _currentAddress = "Fetching location...";
+
+  final Completer<GoogleMapController> _mapController = Completer();
+  Marker? _marker;
+
+  static const LatLng _kDefaultPosition = LatLng(-6.1753924, 106.8271528);
 
   @override
   void initState() {
@@ -41,15 +47,36 @@ class _CheckOutPageState extends State<CheckOutPage> {
           desiredAccuracy: LocationAccuracy.high,
         );
 
-        // TODO: Ganti ini dengan package geocoding untuk alamat asli
-        // List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
-        // String address = placemarks.first.street ?? "Unknown location";
+        final LatLng latLng = LatLng(position.latitude, position.longitude);
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+
+        String address = "Alamat tidak ditemukan";
+        if (placemarks.isNotEmpty) {
+          Placemark place = placemarks[0];
+          address = "${place.street}, ${place.subLocality}, ${place.locality}";
+        }
+
+        _marker = Marker(
+          markerId: const MarkerId("lokasi_saya"),
+          position: latLng,
+          infoWindow: InfoWindow(title: 'Lokasi Anda', snippet: address),
+        );
 
         setState(() {
           _currentPosition = position;
-          _currentAddress = "Office Building, Main Street (Simulated)";
+          _currentAddress = address;
           _isLoadingLocation = false;
         });
+
+        final GoogleMapController controller = await _mapController.future;
+        controller.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(target: latLng, zoom: 16),
+          ),
+        );
       } else {
         throw Exception('Location permission denied');
       }
@@ -71,6 +98,12 @@ class _CheckOutPageState extends State<CheckOutPage> {
       return;
     }
 
+    final now = DateTime.now();
+    final String attendanceDate = DateFormat(
+      'yyyy-MM-dd',
+    ).format(now); // Format YYYY-MM-DD
+    final String checkOutTime = DateFormat('HH:mm:ss').format(now);
+
     // 1. Ambil provider
     final provider = context.read<AttendanceProvider>();
 
@@ -79,6 +112,8 @@ class _CheckOutPageState extends State<CheckOutPage> {
       latitude: _currentPosition!.latitude,
       longitude: _currentPosition!.longitude,
       address: _currentAddress,
+      attendanceDate: attendanceDate,
+      checkOutTime: checkOutTime,
     );
 
     if (!mounted) return;
@@ -242,41 +277,54 @@ class _CheckOutPageState extends State<CheckOutPage> {
             ],
           ),
           const SizedBox(height: 16),
+
           Container(
-            height: 150,
+            height: 250,
             decoration: BoxDecoration(
               color: AppColor.retroCream.withOpacity(0.5),
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Center(
+
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
               child: _isLoadingLocation
-                  ? const CircularProgressIndicator(
-                      color: AppColor.retroDarkRed,
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColor.retroDarkRed,
+                      ),
                     )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.map_outlined,
-                          size: 40,
-                          color: AppColor.retroMediumRed,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Map View Placeholder',
-                          style: TextStyle(color: AppColor.retroMediumRed),
-                        ),
-                        Text(
-                          _currentAddress,
-                          style: TextStyle(
-                            color: AppColor.retroMediumRed,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                  : GoogleMap(
+                      mapType: MapType.normal,
+                      initialCameraPosition: CameraPosition(
+                        target: _kDefaultPosition,
+                        zoom: 14,
+                      ),
+                      onMapCreated: (GoogleMapController controller) {
+                        if (!_mapController.isCompleted) {
+                          _mapController.complete(controller);
+                        }
+                      },
+                      markers: _marker == null
+                          ? {}
+                          : {_marker!}, // Tampilkan marker
+                      myLocationEnabled:
+                          false, // Matikan titik biru (sudah ada marker)
+                      myLocationButtonEnabled: true, // Matikan tombol lokasi
+                      zoomControlsEnabled: true, // Izinkan zoom
                     ),
             ),
+          ),
+
+          // -----------------------------------
+          const SizedBox(height: 16),
+          // Tampilkan alamat di bawah peta
+          Text(
+            _isLoadingLocation ? "Fetching location..." : _currentAddress,
+            style: TextStyle(
+              color: AppColor.retroMediumRed,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
