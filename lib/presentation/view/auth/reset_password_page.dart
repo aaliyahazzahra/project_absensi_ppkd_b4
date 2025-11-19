@@ -1,52 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:project_absensi_ppkd_b4/presentation/view/auth/reset_password_page.dart';
 import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
 import 'package:provider/provider.dart';
 
-class ForgotPasswordPage extends StatefulWidget {
-  const ForgotPasswordPage({super.key});
+class ResetPasswordPage extends StatefulWidget {
+  final String email;
+  const ResetPasswordPage({super.key, required this.email});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  State<ResetPasswordPage> createState() => _ResetPasswordPageState();
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final TextEditingController _emailController = TextEditingController();
+class _ResetPasswordPageState extends State<ResetPasswordPage> {
+  final TextEditingController _otpController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _otpController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendResetEmail(AuthProvider provider) async {
+  Future<void> _resetPassword(AuthProvider provider) async {
     if (!_formKey.currentState!.validate()) return;
 
-    final email = _emailController.text;
-
-    final isSuccess = await provider.handleRequestOtp(email: email);
+    final isSuccess = await provider.handleResetPassword(
+      email: widget.email,
+      otp: _otpController.text,
+      password: _passwordController.text,
+    );
 
     if (!mounted) return;
 
     if (isSuccess) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('OTP sent! Check your email to proceed.'),
+          content: Text('Password reset successfully! Please login.'),
           backgroundColor: Colors.green,
         ),
       );
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ResetPasswordPage(email: email),
-        ),
-      );
+      Navigator.popUntil(context, (route) => route.isFirst);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(provider.otpErrorMessage ?? 'Failed to request OTP.'),
+          content: Text(
+            provider.resetPasswordErrorMessage ?? 'Failed to reset password',
+          ),
           backgroundColor: AppColor.retroDarkRed,
         ),
       );
@@ -64,9 +68,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                },
+                onTap: () => Navigator.pop(context),
                 child: Row(
                   children: [
                     Icon(Icons.arrow_back, color: AppColor.retroDarkRed),
@@ -83,11 +85,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 ),
               ),
               const SizedBox(height: 48),
-              Icon(Icons.mail_outline, size: 80, color: AppColor.retroDarkRed),
+
+              Icon(
+                Icons.lock_open_outlined,
+                size: 80,
+                color: AppColor.retroDarkRed,
+              ),
               const SizedBox(height: 16),
 
               Text(
-                'Reset Password',
+                'New Password',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColor.retroDarkRed,
@@ -107,7 +114,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               const SizedBox(height: 16),
 
               Text(
-                'Enter your email address and we\'ll send\nyou instructions (OTP) to reset your password', // Teks diperbarui
+                'Enter the 6-digit OTP sent to\n${widget.email}',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColor.retroMediumRed,
@@ -129,53 +136,50 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     padding: const EdgeInsets.all(24.0),
                     child: Consumer<AuthProvider>(
                       builder: (context, provider, child) {
-                        final isLoading = provider.isLoadingOtp;
+                        final isLoading = provider.isResettingPassword;
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              'Email Address',
-                              style: TextStyle(
-                                color: AppColor.retroDarkRed,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            _buildLabel('OTP (6-digit)'),
+                            _buildTextFormField(
+                              _otpController,
+                              'Enter OTP',
+                              TextInputType.number,
+                              (value) => (value == null || value.length != 6)
+                                  ? 'OTP must be 6 digits.'
+                                  : null,
                             ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _emailController,
-                              decoration: InputDecoration(
-                                hintText: 'your.email@example.com',
-                                hintStyle: TextStyle(
-                                  color: AppColor.retroMediumRed.withOpacity(
-                                    0.6,
-                                  ),
-                                ),
-                                filled: true,
-                                fillColor: AppColor.retroCream.withOpacity(0.5),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                              ),
-                              keyboardType: TextInputType.emailAddress,
-                              style: TextStyle(color: AppColor.retroDarkRed),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Email cannot be empty.';
-                                }
-                                if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
-                                  return 'Please enter a valid email address.';
-                                }
+                            const SizedBox(height: 24),
+
+                            _buildLabel('New Password'),
+                            _buildTextFormField(
+                              _passwordController,
+                              'Enter new password',
+                              TextInputType.visiblePassword,
+                              (value) {
+                                if (value == null || value.length < 6)
+                                  return 'Password must be at least 6 characters.';
                                 return null;
                               },
+                              isObscure: true,
+                            ),
+                            const SizedBox(height: 24),
+
+                            _buildLabel('Confirm Password'),
+                            _buildTextFormField(
+                              _confirmPasswordController,
+                              'Re-enter new password',
+                              TextInputType.visiblePassword,
+                              (value) {
+                                if (value != _passwordController.text)
+                                  return 'Passwords do not match.';
+                                return null;
+                              },
+                              isObscure: true,
                             ),
                             const SizedBox(height: 32),
 
+                            // Reset Button
                             ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColor.retroDarkRed,
@@ -189,7 +193,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               ),
                               onPressed: isLoading
                                   ? null
-                                  : () => _sendResetEmail(provider),
+                                  : () => _resetPassword(provider),
                               child: isLoading
                                   ? const SizedBox(
                                       height: 24,
@@ -203,33 +207,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                                       ),
                                     )
                                   : const Text(
-                                      'Send Reset Email',
+                                      'Reset Password',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 18,
                                       ),
                                     ),
-                            ),
-                            const SizedBox(height: 24),
-
-                            const SizedBox(height: 24),
-
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.popUntil(
-                                  context,
-                                  (route) => route.isFirst,
-                                );
-                              },
-                              child: Text(
-                                'Return to Sign In',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: AppColor.retroLightRed,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
                             ),
                           ],
                         );
@@ -242,6 +225,54 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLabel(String label) {
+    return Text(
+      label,
+      style: TextStyle(
+        color: AppColor.retroDarkRed,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  Widget _buildTextFormField(
+    TextEditingController controller,
+    String hintText,
+    TextInputType keyboardType,
+    String? Function(String?) validator, {
+    bool isObscure = false,
+  }) {
+    return Column(
+      children: [
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: TextStyle(
+              color: AppColor.retroMediumRed.withOpacity(0.6),
+            ),
+            filled: true,
+            fillColor: AppColor.retroCream.withOpacity(0.5),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+          keyboardType: keyboardType,
+          style: TextStyle(color: AppColor.retroDarkRed),
+          obscureText: isObscure,
+          validator: validator,
+        ),
+      ],
     );
   }
 }

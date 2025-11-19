@@ -4,14 +4,21 @@ class Endpoints {
   static const String register = "$baseUrl/register";
   static const String login = "$baseUrl/login";
 
+  static const String forgotPassword = '$baseUrl/forgot-password';
+  static const String resetPassword = '$baseUrl/reset-password';
+
   static const String profile = "$baseUrl/profile";
   static const String updateProfile = '$baseUrl/profile';
   static const String todayStatus = '$baseUrl/api/absen/today';
   static const String editProfilePhoto = "$baseUrl/profile/photo";
 
-  static const String checkIn = "$baseUrl/absen/check-in";
-  static const String checkOut = "$baseUrl/absen/check-out";
-  static const String historyAbsen = "$baseUrl/absen/history";
+  static const String checkIn = '$baseUrl/absen/check-in';
+  static const String checkOut = '$baseUrl/absen/check-out';
+  static const String historyAbsen = '$baseUrl/absen/history';
+  static const String deleteAbsen =
+      '$baseUrl/absen/'; // Tambahkan ID di belakangnya
+
+  static const String absenStats = '$baseUrl/absen/stats';
 
   static const String trainings = "$baseUrl/trainings";
   static const String batches = "$baseUrl/batches";

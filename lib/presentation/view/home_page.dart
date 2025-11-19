@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/check_in_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/check_out_page.dart';
@@ -24,10 +25,48 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _fetchWeeklyStats() {
+    final now = DateTime.now();
+    // Ambil 7 hari terakhir (lebih sederhana)
+    DateTime endDate = now;
+    DateTime startDate = now.subtract(const Duration(days: 6));
+
+    final formatter = DateFormat('yyyy-MM-dd');
+
+    context.read<AttendanceProvider>().fetchAttendanceStats(
+      startDate: formatter.format(startDate),
+      endDate: formatter.format(endDate),
+    );
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) {
+      return 'Good Morning,';
+    } else if (hour < 15) {
+      return 'Good Afternoon,';
+    } else if (hour < 18) {
+      return 'Good Evening,';
+    } else {
+      return 'Good Night,';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileProvider = context.watch<ProfileProvider>();
     final attendanceProvider = context.watch<AttendanceProvider>();
+
+    final stats = attendanceProvider.statsData;
+    final totalMasuk = stats?.totalMasuk ?? 0;
+    final totalIzin = stats?.totalIzin ?? 0;
+    final totalAbsen = stats?.totalAbsen ?? 0;
+
+    final String todayWorkingHours = attendanceProvider.totalWorkingHoursToday;
+
+    final String weeklyStatsSubValue = attendanceProvider.isLoadingStats
+        ? "Memuat statistik mingguan..."
+        : "Statistik dari ${DateFormat('dd MMM').format(DateTime.now().subtract(const Duration(days: 6)))} - ${DateFormat('dd MMM').format(DateTime.now())}";
 
     String userName = profileProvider.isLoading
         ? "Memuat..."
@@ -59,10 +98,12 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 24),
 
             _buildInfoCard(
-              title: "Total Working Hours",
+              title: "Total Jam Kerja Hari Ini",
               icon: Icons.timer_outlined,
-              mainValue: "0h 0m",
-              subValue: "This Week: 32h 15m",
+              mainValue: attendanceProvider.isLoadingStatus
+                  ? "..."
+                  : todayWorkingHours,
+              subValue: "Durasi kerja yang tercatat hari ini.",
             ),
             const SizedBox(height: 24),
 
@@ -72,15 +113,73 @@ class _HomePageState extends State<HomePage> {
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 32.0),
-                  child: Text(
-                    'Weekly chart will be here',
-                    style: TextStyle(color: AppColor.retroMediumRed),
-                  ),
+                  child: attendanceProvider.isLoadingStats
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 32.0),
+                            child: CircularProgressIndicator(
+                              color: AppColor.retroMediumRed,
+                            ),
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: 16),
+                            _buildStatRow(
+                              "Total Hari Masuk",
+                              totalMasuk.toString(),
+                              Colors.green,
+                            ),
+                            _buildStatRow(
+                              "Total Hari Izin",
+                              totalIzin.toString(),
+                              Colors.amber,
+                            ),
+                            _buildStatRow(
+                              "Total Hari Alpha",
+                              totalAbsen.toString(),
+                              AppColor.retroDarkRed,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              weeklyStatsSubValue,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: AppColor.retroMediumRed),
+                            ),
+                          ],
+                        ),
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: AppColor.retroDarkRed.withOpacity(0.8),
+              fontSize: 16,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -91,6 +190,7 @@ class _HomePageState extends State<HomePage> {
     String checkOutTime,
     bool isLoading,
   ) {
+    final String greeting = _getGreeting();
     return Container(
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
@@ -101,7 +201,7 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Good Morning,',
+            greeting,
             style: TextStyle(
               color: AppColor.retroCream.withOpacity(0.8),
               fontSize: 16,
@@ -190,6 +290,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final attendanceProvider = context.watch<AttendanceProvider>();
+
+    final todayStatus = attendanceProvider.todayStatus;
+
+    final bool isClockInEnabled = todayStatus?.checkInTime == null;
+
+    final bool isClockOutEnabled =
+        todayStatus?.checkInTime != null && todayStatus?.checkOutTime == null;
+
     return Row(
       children: [
         Expanded(
@@ -197,6 +306,7 @@ class _HomePageState extends State<HomePage> {
             label: "Clock In",
             icon: Icons.login,
             isPrimary: true,
+            isDisabled: !isClockInEnabled,
             onPressed: () {
               Navigator.push(
                 context,
@@ -211,6 +321,7 @@ class _HomePageState extends State<HomePage> {
             label: "Clock Out",
             icon: Icons.logout,
             isPrimary: false,
+            isDisabled: !isClockOutEnabled,
             onPressed: () {
               Navigator.push(
                 context,
@@ -228,26 +339,31 @@ class _HomePageState extends State<HomePage> {
     required IconData icon,
     required bool isPrimary,
     required VoidCallback onPressed,
+    required bool isDisabled,
   }) {
     return SizedBox(
       height: 120,
       child: ElevatedButton.icon(
-        onPressed: onPressed,
+        onPressed: isDisabled ? null : onPressed,
         icon: Icon(icon, size: 28),
         label: Text(
           label,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary
+          backgroundColor: isDisabled
+              ? Colors.grey[400]
+              : isPrimary
               ? AppColor.retroDarkRed
               : AppColor.kBackgroundColor,
-          foregroundColor: isPrimary
+          foregroundColor: isDisabled
+              ? Colors.grey[600]
+              : isPrimary
               ? AppColor.retroCream
               : AppColor.retroDarkRed,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
-            side: isPrimary
+            side: (isPrimary || isDisabled)
                 ? BorderSide.none
                 : BorderSide(color: AppColor.retroDarkRed, width: 2),
           ),
@@ -274,7 +390,7 @@ class _HomePageState extends State<HomePage> {
           BoxShadow(
             color: AppColor.retroMediumRed.withOpacity(0.1),
             blurRadius: 10,
-            offset: Offset(0, 5),
+            offset: const Offset(0, 5),
           ),
         ],
       ),

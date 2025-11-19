@@ -3,13 +3,11 @@ import 'package:project_absensi_ppkd_b4/models/response/profile_response.dart'
     as profile;
 import 'package:project_absensi_ppkd_b4/repositories/profile_repository.dart';
 
-// 'ChangeNotifier' untuk memberi tahu UI jika ada perubahan state
 class ProfileProvider with ChangeNotifier {
-  ProfileRepository? _repository; // 1. Buat jadi nullable
+  ProfileRepository? _repository;
 
-  ProfileProvider(); // 2. Kosongkan constructor
+  ProfileProvider();
 
-  // 3. Tambahkan fungsi 'updateRepository'
   void updateRepository(ProfileRepository repository) {
     _repository = repository;
   }
@@ -23,16 +21,21 @@ class ProfileProvider with ChangeNotifier {
   bool _isUpdating = false;
   String? _updateErrorMessage;
 
+  // --- State Variables (Logout) ---
+  bool _isLoggingOut = false; // NEW
+  String? _logoutErrorMessage; // NEW
+
   // --- Getters (agar UI bisa "membaca" state) ---
   bool get isLoading => _isLoading;
   profile.Data? get userProfile => _userProfile;
   String? get errorMessage => _errorMessage;
   bool get isUpdating => _isUpdating;
   String? get updateErrorMessage => _updateErrorMessage;
+  bool get isLoggingOut => _isLoggingOut;
+  String? get logoutErrorMessage => _logoutErrorMessage;
 
   // --- Logic Function ---
   Future<void> fetchProfileData() async {
-    // 4. Tambahkan null check
     if (_repository == null) {
       _errorMessage = "Service not ready";
       _isLoading = false;
@@ -46,7 +49,7 @@ class ProfileProvider with ChangeNotifier {
 
     try {
       // 2. Panggil REPOSITORY, bukan ApiService
-      final data = await _repository!.fetchProfile(); // 5. Gunakan '!'
+      final data = await _repository!.fetchProfile();
       _userProfile = data;
     } catch (e) {
       // 3. Tangani error
@@ -63,7 +66,6 @@ class ProfileProvider with ChangeNotifier {
     required String name,
     required String email,
   }) async {
-    // 4. Tambahkan null check
     if (_repository == null) {
       _updateErrorMessage = "Service not ready";
       _isUpdating = false;
@@ -79,7 +81,6 @@ class ProfileProvider with ChangeNotifier {
     try {
       // 2. Panggil REPOSITORY
       final updatedData = await _repository!.updateProfile(
-        // 5. Gunakan '!'
         name: name,
         email: email,
       );
@@ -89,13 +90,40 @@ class ProfileProvider with ChangeNotifier {
 
       _isUpdating = false;
       notifyListeners();
-      return true; // Kembalikan true (sukses)
+      return true;
     } catch (e) {
       // 4. JIKA GAGAL:
       _updateErrorMessage = e.toString();
       _isUpdating = false;
       notifyListeners();
       return false; // Kembalikan false (gagal)
+    }
+  }
+
+  Future<bool> handleLogout() async {
+    if (_repository == null) {
+      _logoutErrorMessage = "Service not ready.";
+      notifyListeners();
+      return false;
+    }
+
+    _isLoggingOut = true;
+    _logoutErrorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository!.logout();
+
+      _userProfile = null;
+
+      _isLoggingOut = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _logoutErrorMessage = e.toString().replaceAll("Exception: ", "");
+      _isLoggingOut = false;
+      notifyListeners();
+      return false;
     }
   }
 }

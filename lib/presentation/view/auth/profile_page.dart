@@ -22,6 +22,66 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
+  Future<void> _logout(ProfileProvider provider) async {
+    // Tampilkan dialog konfirmasi (UX yang lebih baik daripada langsung logout)
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppColor.retroDarkRed),
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+            ),
+            TextButton(
+              child: const Text(
+                'Logout',
+                style: TextStyle(
+                  color: AppColor.retroDarkRed,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    final isSuccess = await provider.handleLogout();
+
+    if (!mounted) return;
+
+    if (isSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Logout successful.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      // Navigasi ke halaman utama (Login), membersihkan stack navigasi
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.logoutErrorMessage ?? 'Failed to logout.'),
+          backgroundColor: AppColor.retroDarkRed,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<ProfileProvider>(
@@ -29,16 +89,21 @@ class _ProfilePageState extends State<ProfilePage> {
         final bool isLoading = provider.isLoading;
         final String? errorMessage = provider.errorMessage;
         final user = provider.userProfile;
+        final profilePhotoUrl = user?.profilePhoto;
 
         return Scaffold(
           backgroundColor: AppColor.retroCream,
           body: Column(
             children: [
               _buildProfileHeader(
-                isLoading ? "Memuat..." : (user?.name ?? "Nama Tidak Tersedia"),
-                isLoading
+                name: isLoading
+                    ? "Memuat..."
+                    : (user?.name ?? "Nama Tidak Tersedia"),
+                email: isLoading
                     ? "Memuat..."
                     : (user?.email ?? "Email Tidak Tersedia"),
+                photoUrl: profilePhotoUrl,
+                isLoading: isLoading,
               ),
 
               Expanded(
@@ -81,17 +146,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         icon: Icons.logout,
                         title: "Logout",
                         isLogout: true,
-                        onTap: () {
-                          context.read<AuthProvider>().handleLogout();
-
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const LoginPage(),
-                            ),
-                            (route) => false,
-                          );
-                        },
+                        onTap: () => _logout(provider),
                       ),
                     ],
                   ),
@@ -119,7 +174,12 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildProfileHeader(String name, String email) {
+  Widget _buildProfileHeader({
+    required String name,
+    required String email,
+    String? photoUrl,
+    required bool isLoading,
+  }) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -153,11 +213,30 @@ class _ProfilePageState extends State<ProfilePage> {
                   CircleAvatar(
                     radius: 40,
                     backgroundColor: AppColor.retroCream,
-                    child: Icon(
-                      Icons.person,
-                      size: 40,
-                      color: AppColor.retroMediumRed,
-                    ),
+                    child: isLoading
+                        ? const CircularProgressIndicator(
+                            color: AppColor.retroMediumRed,
+                          )
+                        : (photoUrl != null && photoUrl.isNotEmpty)
+                        ? ClipOval(
+                            child: Image.network(
+                              photoUrl,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Icon(
+                                    Icons.person,
+                                    size: 40,
+                                    color: AppColor.retroMediumRed,
+                                  ),
+                            ),
+                          )
+                        : Icon(
+                            Icons.person,
+                            size: 40,
+                            color: AppColor.retroMediumRed,
+                          ),
                   ),
                   const SizedBox(height: 16),
                   Text(

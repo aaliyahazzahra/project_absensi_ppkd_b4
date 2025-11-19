@@ -19,7 +19,6 @@ class AuthRepository {
 
       return authData;
     } catch (e) {
-      // Teruskan error (misal "Password salah") ke Provider
       rethrow;
     }
   }
@@ -34,7 +33,6 @@ class AuthRepository {
     required int? trainingId,
   }) async {
     try {
-      // 1. Panggil ApiService
       final authData = await _apiService.register(
         name: name,
         email: email,
@@ -45,18 +43,39 @@ class AuthRepository {
         trainingId: trainingId,
       );
 
-      // 2. Sama seperti login, data dikembalikan ke provider
       return authData;
     } catch (e) {
-      // Teruskan error (misal "Email sudah terdaftar") ke Provider
       rethrow;
     }
   }
 
   Future<void> logout() async {
     try {
-      // Panggil fungsi logout dari ApiService
       await _apiService.logout();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> requestOtp({required String email}) async {
+    try {
+      await _apiService.requestOtp(email: email);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String password,
+  }) async {
+    try {
+      await _apiService.resetPassword(
+        email: email,
+        otp: otp,
+        password: password,
+      );
     } catch (e) {
       rethrow;
     }

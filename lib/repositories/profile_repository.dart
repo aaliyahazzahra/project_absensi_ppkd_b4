@@ -31,4 +31,12 @@ class ProfileRepository {
       rethrow;
     }
   }
+
+  Future<void> logout() async {
+    try {
+      await _apiService.logout();
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

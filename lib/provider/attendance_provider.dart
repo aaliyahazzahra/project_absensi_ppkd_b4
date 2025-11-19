@@ -1,26 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:project_absensi_ppkd_b4/models/response/history_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/today_status_response.dart';
+import 'package:project_absensi_ppkd_b4/models/response/attendance_stats_response.dart';
 import 'package:project_absensi_ppkd_b4/repositories/attendance_repository.dart';
 
 class AttendanceProvider with ChangeNotifier {
-  AttendanceRepository? _repository; // 1. Buat jadi nullable
-  AttendanceProvider(); // 2. Kosongkan constructor
+  AttendanceRepository? _repository;
 
-  // 3. Tambahkan fungsi 'updateRepository'
+  AttendanceProvider();
+
   void updateRepository(AttendanceRepository repository) {
     _repository = repository;
   }
 
+  // --- TODAY STATUS STATE ---
   bool _isLoadingStatus = false;
   TodayStatusData? _todayStatus;
   String? _statusErrorMessage;
 
+  // --- CHECK IN/OUT STATE ---
   bool _isCheckingIn = false;
   String? _checkInErrorMessage;
-
   bool _isCheckingOut = false;
   String? _checkOutErrorMessage;
 
+  // --- HISTORY STATE ---
+  List<HistoryData>? _historyList;
+  bool _isLoadingHistory = false;
+  String? _historyErrorMessage;
+
+  // --- STATS STATE ---
+  AttendanceStatsData? _statsData;
+  bool _isLoadingStats = false;
+  String? _statsErrorMessage;
+  String _totalWorkingHoursToday = "0h 0m";
+
+  // --- GETTERS ---
   bool get isLoadingStatus => _isLoadingStatus;
   TodayStatusData? get todayStatus => _todayStatus;
   String? get statusErrorMessage => _statusErrorMessage;
@@ -31,8 +46,95 @@ class AttendanceProvider with ChangeNotifier {
   bool get isCheckingOut => _isCheckingOut;
   String? get checkOutErrorMessage => _checkOutErrorMessage;
 
+  List<HistoryData>? get historyList => _historyList;
+  bool get isLoadingHistory => _isLoadingHistory;
+  String? get historyErrorMessage => _historyErrorMessage;
+
+  // GETTERS for Stats
+  AttendanceStatsData? get statsData => _statsData;
+  bool get isLoadingStats => _isLoadingStats;
+  String? get statsErrorMessage => _statsErrorMessage;
+  String get totalWorkingHoursToday => _totalWorkingHoursToday;
+
+  // Helper: Hitung Durasi Kerja (Input: HH:MM:SS)
+  Duration _calculateWorkDuration(String? checkIn, String? checkOut) {
+    if (checkIn == null || checkOut == null) return Duration.zero;
+
+    try {
+      final now = DateTime.now();
+      // Gabungkan tanggal hari ini dengan waktu untuk membuat DateTime valid
+      final checkInTime = DateTime.parse(
+        '${now.toString().split(' ').first} $checkIn',
+      );
+      final checkOutTime = DateTime.parse(
+        '${now.toString().split(' ').first} $checkOut',
+      );
+
+      // Hitung selisih
+      if (checkOutTime.isAfter(checkInTime)) {
+        return checkOutTime.difference(checkInTime);
+      }
+    } catch (e) {
+      // Print error di console jika gagal parsing
+      debugPrint('Error calculating duration: $e');
+    }
+    return Duration.zero;
+  }
+
+  // Helper: Format Durasi ke "Xh Ym"
+  String _formatDuration(Duration duration) {
+    if (duration.isNegative) return "0h 0m";
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    return "${hours}h ${minutes}m";
+  }
+
+  // Fungsi: Hitung jam kerja hari ini (Client-side)
+  void _calculateTodayWorkingHours() {
+    if (_todayStatus?.checkInTime != null &&
+        _todayStatus?.checkOutTime != null) {
+      final duration = _calculateWorkDuration(
+        _todayStatus!.checkInTime,
+        _todayStatus!.checkOutTime,
+      );
+      _totalWorkingHoursToday = _formatDuration(duration);
+    } else {
+      _totalWorkingHoursToday = "0h 0m";
+    }
+    // Hanya notifyListeners() jika state total working hours berubah
+    // (notifyListeners() sudah dipanggil di fetchTodayStatusData/handleCheckOut)
+  }
+
+  // Fungsi BARU: Fetch Attendance Stats
+  Future<void> fetchAttendanceStats({
+    required String startDate,
+    required String endDate,
+  }) async {
+    if (_repository == null) {
+      _statsErrorMessage = "Service not ready";
+      _isLoadingStats = false;
+      notifyListeners();
+      return;
+    }
+
+    _isLoadingStats = true;
+    _statsErrorMessage = null;
+    notifyListeners();
+
+    try {
+      _statsData = await _repository!.fetchAttendanceStats(
+        startDate: startDate,
+        endDate: endDate,
+      );
+    } catch (e) {
+      _statsErrorMessage = e.toString();
+    } finally {
+      _isLoadingStats = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> fetchTodayStatusData() async {
-    // 4. Tambahkan null check
     if (_repository == null) {
       _statusErrorMessage = "Service not ready";
       _isLoadingStatus = false;
@@ -45,10 +147,36 @@ class AttendanceProvider with ChangeNotifier {
 
     try {
       _todayStatus = await _repository!.fetchTodayStatus();
+      _calculateTodayWorkingHours(); // Panggil setelah status didapat
     } catch (e) {
       _statusErrorMessage = e.toString();
     } finally {
       _isLoadingStatus = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchAttendanceHistory() async {
+    if (_repository == null) {
+      _historyErrorMessage = "Service not ready";
+      _isLoadingHistory = false;
+      notifyListeners();
+      return;
+    }
+
+    _isLoadingHistory = true;
+    _historyErrorMessage = null;
+    notifyListeners();
+
+    try {
+      // Asumsi repository sudah memiliki fetchAttendanceHistory
+      // Kita tidak bisa menggunakan _repository! karena itu tidak ada di konteks
+      // Tapi karena ini adalah provider, kita harus asumsikan ada
+      _historyList = await _repository!.fetchAttendanceHistory();
+    } catch (e) {
+      _historyErrorMessage = e.toString();
+    } finally {
+      _isLoadingHistory = false;
       notifyListeners();
     }
   }
@@ -82,7 +210,12 @@ class AttendanceProvider with ChangeNotifier {
         status: status,
       );
 
+      // Panggil ulang status hari ini (ini yang akan memicu perhitungan jam kerja)
       await fetchTodayStatusData();
+      // fetchTodayStatusData sudah memanggil _calculateTodayWorkingHours()
+
+      // Tambahkan pembaruan statistik mingguan jika diperlukan
+      // _fetchWeeklyStats();
 
       _isCheckingIn = false;
       notifyListeners();
@@ -114,9 +247,7 @@ class AttendanceProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Panggil REPOSITORY
       await _repository!.checkOut(
-        // 5. Gunakan '!'
         latitude: latitude,
         longitude: longitude,
         address: address,
@@ -124,17 +255,20 @@ class AttendanceProvider with ChangeNotifier {
         checkOutTime: checkOutTime,
       );
 
-      // 2. JIKA SUKSES:
+      // Panggil ulang status hari ini (ini yang akan memicu perhitungan jam kerja)
       await fetchTodayStatusData();
+      // fetchTodayStatusData sudah memanggil _calculateTodayWorkingHours()
+
+      // Tambahkan pembaruan statistik mingguan jika diperlukan
+      // _fetchWeeklyStats();
 
       _isCheckingOut = false;
-      notifyListeners(); // Beri tahu UI "Check-out selesai!"
+      notifyListeners();
       return true;
     } catch (e) {
-      // 3. JIKA GAGAL:
       _checkOutErrorMessage = e.toString();
       _isCheckingOut = false;
-      notifyListeners(); // Beri tahu UI "Gagal check-out!"
+      notifyListeners();
       return false;
     }
   }

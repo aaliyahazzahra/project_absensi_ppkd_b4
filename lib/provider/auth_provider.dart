@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/repositories/auth_repository.dart';
 
 class AuthProvider with ChangeNotifier {
-  AuthRepository? _repository; // 1. Buat jadi nullable
+  AuthRepository? _repository;
 
-  // 2. Kosongkan constructor (tidak perlu 'required repository' lagi)
+  bool _isLoadingOtp = false;
+  String? _otpErrorMessage;
+  String? _resetEmail;
+
+  bool _isResettingPassword = false;
+  String? _resetPasswordErrorMessage;
+
   AuthProvider();
 
-  // 3. Buat fungsi untuk "menyuntik" repository nanti
   void updateRepository(AuthRepository repository) {
     _repository = repository;
   }
@@ -24,9 +29,13 @@ class AuthProvider with ChangeNotifier {
   String? get registerErrorMessage => _registerErrorMessage;
   bool get isLoggedIn => _isLoggedIn;
 
-  // 4. Tambahkan null check di semua fungsi yang memakai _repository
+  bool get isLoadingOtp => _isLoadingOtp;
+  String? get otpErrorMessage => _otpErrorMessage;
+  String? get resetEmail => _resetEmail;
+  bool get isResettingPassword => _isResettingPassword;
+  String? get resetPasswordErrorMessage => _resetPasswordErrorMessage;
+
   Future<bool> handleLogin(String email, String password) async {
-    // Tambahkan Pengecekan
     if (_repository == null) {
       _errorMessage = "Service not ready";
       notifyListeners();
@@ -38,7 +47,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _repository!.login(email, password); // Gunakan '!'
+      await _repository!.login(email, password);
       _isLoading = false;
       notifyListeners();
       return true;
@@ -59,7 +68,6 @@ class AuthProvider with ChangeNotifier {
     required int? batchId,
     required int? trainingId,
   }) async {
-    // Tambahkan Pengecekan
     if (_repository == null) {
       _registerErrorMessage = "Service not ready";
       notifyListeners();
@@ -72,7 +80,6 @@ class AuthProvider with ChangeNotifier {
 
     try {
       await _repository!.register(
-        // Gunakan '!'
         name: name,
         email: email,
         password: password,
@@ -95,7 +102,6 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> handleLogout() async {
-    // Tambahkan Pengecekan
     if (_repository == null) {
       print("Logout failed: repository is null");
       _isLoggedIn = false;
@@ -104,12 +110,71 @@ class AuthProvider with ChangeNotifier {
     }
 
     try {
-      await _repository!.logout(); // Gunakan '!'
+      await _repository!.logout();
     } catch (e) {
       print("Error during logout: $e");
     } finally {
       _isLoggedIn = false;
       notifyListeners();
+    }
+  }
+
+  Future<bool> handleRequestOtp({required String email}) async {
+    if (_repository == null) {
+      _otpErrorMessage = "Service not ready.";
+      notifyListeners();
+      return false;
+    }
+
+    _isLoadingOtp = true;
+    _otpErrorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository!.requestOtp(email: email);
+
+      _resetEmail = email;
+      _isLoadingOtp = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _otpErrorMessage = e.toString().replaceAll("Exception: ", "");
+      _isLoadingOtp = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> handleResetPassword({
+    required String email,
+    required String otp,
+    required String password,
+  }) async {
+    if (_repository == null) {
+      _resetPasswordErrorMessage = "Service not ready.";
+      notifyListeners();
+      return false;
+    }
+
+    _isResettingPassword = true;
+    _resetPasswordErrorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository!.resetPassword(
+        email: email,
+        otp: otp,
+        password: password,
+      );
+
+      _isResettingPassword = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _resetPasswordErrorMessage = e.toString().replaceAll("Exception: ", "");
+      _isResettingPassword = false;
+      notifyListeners();
+      return false;
     }
   }
 }

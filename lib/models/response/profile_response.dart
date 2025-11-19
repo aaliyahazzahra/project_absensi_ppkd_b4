@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-ProfileResponse profileFromJson(String str) => ProfileResponse.fromJson(json.decode(str));
+ProfileResponse profileFromJson(String str) =>
+    ProfileResponse.fromJson(json.decode(str));
 
 String profileToJson(ProfileResponse data) => json.encode(data.toJson());
 
@@ -10,27 +11,31 @@ class ProfileResponse {
 
   ProfileResponse({this.message, this.data});
 
-  factory ProfileResponse.fromJson(Map<String, dynamic> json) => ProfileResponse(
-    message: json["message"],
-    data: json["data"] == null ? null : Data.fromJson(json["data"]),
-  );
+  factory ProfileResponse.fromJson(Map<String, dynamic> json) =>
+      ProfileResponse(
+        message: json["message"],
+        data: json["data"] == null ? null : Data.fromJson(json["data"]),
+      );
 
   Map<String, dynamic> toJson() => {"message": message, "data": data?.toJson()};
 }
 
 class Data {
-  int? id;
-  String? name;
-  String? email;
-  DateTime?
-  emailVerifiedAt;
-  DateTime? createdAt;
-  DateTime? updatedAt;
+  final int? id;
+  final String? name;
+  final String? email;
+  final String? jenisKelamin;
+  final String? profilePhoto;
+  final DateTime? emailVerifiedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Data({
     this.id,
     this.name,
     this.email,
+    this.jenisKelamin,
+    this.profilePhoto,
     this.emailVerifiedAt,
     this.createdAt,
     this.updatedAt,

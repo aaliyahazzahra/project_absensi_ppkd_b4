@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:project_absensi_ppkd_b4/models/response/attendance_stats_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/auth_response.dart'
     as auth;
 import 'package:project_absensi_ppkd_b4/models/response/batches_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/check_in_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/check_out_response.dart';
+import 'package:project_absensi_ppkd_b4/models/response/history_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/profile_response.dart'
     as profile;
 import 'package:project_absensi_ppkd_b4/models/response/today_status_response.dart';
@@ -247,6 +249,70 @@ class ApiService {
     }
   }
 
+  Future<AttendanceStatsData?> getAttendanceStats({
+    required String startDate,
+    required String endDate,
+  }) async {
+    final String? token = await _getToken();
+    if (token == null) throw Exception('Token not found. Please login again.');
+
+    // Buat URL dengan query parameter start dan end
+    final Uri url = Uri.parse(
+      Endpoints.absenStats,
+    ).replace(queryParameters: {'start': startDate, 'end': endDate});
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final Map<String, dynamic> responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final statsResponse = AttendanceStatsResponse.fromJson(responseBody);
+        return statsResponse.data;
+      } else {
+        throw Exception(
+          responseBody['message'] ?? 'Failed to load attendance stats',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to server: $e');
+    }
+  }
+
+  Future<List<HistoryData>> getAttendanceHistory() async {
+    final String? token = await _getToken();
+    if (token == null) throw Exception('Token not found. Please login again.');
+
+    try {
+      final response = await http.get(
+        Uri.parse(Endpoints.historyAbsen),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final Map<String, dynamic> responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final historyResponse = HistoryResponse.fromJson(responseBody);
+        return historyResponse.data;
+      } else {
+        throw Exception(
+          responseBody['message'] ?? 'Failed to load attendance history',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to server: $e');
+    }
+  }
+
   Future<profile.Data> getProfile() async {
     final String? token = await _getToken();
     if (token == null) throw Exception('Token not found. Please login again.');
@@ -286,7 +352,7 @@ class ApiService {
     if (token == null) throw Exception('Token not found. Please login again.');
 
     try {
-      final response = await http.post(
+      final response = await http.put(
         Uri.parse(Endpoints.updateProfile),
         headers: {
           'Accept': 'application/json',
@@ -307,6 +373,53 @@ class ApiService {
         }
       } else {
         throw Exception(responseBody['message'] ?? 'Failed to update profile');
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to server: $e');
+    }
+  }
+
+  Future<void> requestOtp({required String email}) async {
+    try {
+      final response = await http.post(
+        Uri.parse(Endpoints.forgotPassword),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'email': email}),
+      );
+
+      final Map<String, dynamic> responseBody = jsonDecode(response.body);
+
+      if (response.statusCode != 200) {
+        throw Exception(responseBody['message'] ?? 'Failed to request OTP');
+      }
+      // Jika 200, tidak perlu me-return data, cukup sukses
+    } catch (e) {
+      throw Exception('Failed to connect to server: $e');
+    }
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String password,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse(Endpoints.resetPassword),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'email': email, 'otp': otp, 'password': password}),
+      );
+
+      final Map<String, dynamic> responseBody = jsonDecode(response.body);
+
+      if (response.statusCode != 200) {
+        throw Exception(responseBody['message'] ?? 'Failed to reset password');
       }
     } catch (e) {
       throw Exception('Failed to connect to server: $e');
