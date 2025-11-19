@@ -9,7 +9,7 @@ class Endpoints {
 
   static const String profile = "$baseUrl/profile";
   static const String updateProfile = '$baseUrl/profile';
-  static const String todayStatus = '$baseUrl/api/absen/today';
+  static const String todayStatus = '$baseUrl/absen/today';
   static const String editProfilePhoto = "$baseUrl/profile/photo";
 
   static const String checkIn = '$baseUrl/absen/check-in';

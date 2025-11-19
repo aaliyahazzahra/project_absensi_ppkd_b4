@@ -3,7 +3,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:project_absensi_ppkd_b4/presentation/view/particle.dart';
+// Import file PreferenceHandler yang baru
+import 'package:project_absensi_ppkd_b4/core/preference_handler.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/particle.dart'; // Asumsi file ini ada
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,7 +23,7 @@ class _SplashScreenState extends State<SplashScreen>
   late List<Particle> _particles;
   final Random _random = Random();
   String _displayText = "";
-  final String _fullText = "Absensi Cerdas";
+  final String _fullText = "PRESENTIA";
   Timer? _typewriterTimer;
 
   @override
@@ -47,11 +49,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _startTypewriter();
 
-    Timer(const Duration(seconds: 5), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      }
-    });
+    _handleNavigation();
   }
 
   void _startTypewriter() {
@@ -79,6 +77,21 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
+  void _handleNavigation() {
+    Timer(const Duration(seconds: 4), () async {
+      if (mounted) {
+        // 1. Dapatkan status login dari SharedPreferences
+        final isLoggedIn = await PreferenceHandler.getLoginStatus();
+
+        // 2. Tentukan rute tujuan
+        final String targetRoute = isLoggedIn ? '/home' : '/login';
+
+        // 3. Navigasi ke rute yang sesuai
+        Navigator.of(context).pushReplacementNamed(targetRoute);
+      }
+    });
+  }
+
   @override
   void dispose() {
     _gradientController.dispose();
@@ -95,7 +108,6 @@ class _SplashScreenState extends State<SplashScreen>
         fit: StackFit.expand,
         children: [
           _buildGradientBackground(),
-
           AnimatedBuilder(
             animation: _particleController,
             builder: (context, child) {
@@ -110,7 +122,6 @@ class _SplashScreenState extends State<SplashScreen>
               );
             },
           ),
-
           _buildLogoAndText(),
         ],
       ),
@@ -164,7 +175,6 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
           const SizedBox(height: 20),
-
           Text(
             _displayText,
             style: const TextStyle(

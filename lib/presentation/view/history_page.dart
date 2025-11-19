@@ -5,7 +5,6 @@ import 'package:project_absensi_ppkd_b4/models/response/history_response.dart';
 import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
 import 'package:provider/provider.dart';
 
-// Enum untuk status yang digunakan di UI
 enum AttendanceStatus { all, present, absent, late, weekend, incomplete, izin }
 
 class HistoryPage extends StatefulWidget {
@@ -16,9 +15,7 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
-  // Simpan bulan dan tahun yang sedang ditampilkan
   DateTime _currentMonth = DateTime.now();
-  // State Filter Status
   AttendanceStatus _selectedStatusFilter = AttendanceStatus.all;
 
   @override
@@ -33,7 +30,6 @@ class _HistoryPageState extends State<HistoryPage> {
     context.read<AttendanceProvider>().fetchAttendanceHistory();
   }
 
-  // Helper untuk mengubah bulan
   void _changeMonth(int months) {
     setState(() {
       _currentMonth = DateTime(
@@ -44,14 +40,13 @@ class _HistoryPageState extends State<HistoryPage> {
     });
   }
 
-  // NEW FUNCTION: Membuka DatePicker untuk memilih bulan dan tahun
   Future<void> _showMonthPicker() async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _currentMonth,
       firstDate: DateTime(2020),
       lastDate: DateTime(DateTime.now().year + 5),
-      helpText: 'Pilih Bulan dan Tahun',
+      helpText: 'Select Month and Year',
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
@@ -72,40 +67,33 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
-  // Helper untuk mendapatkan enum status dari string status API
   AttendanceStatus _getStatusFromApi(HistoryData item) {
-    final status = item.status?.toLowerCase() ?? '';
+    final status = item.status.toLowerCase() ?? '';
 
-    // Check Status Izin/Alpha
     if (status.contains('izin') ||
         (status.contains('absen') && item.alasanIzin != null)) {
       return AttendanceStatus.izin;
     }
 
-    // Check Status Absent (Alpha murni)
     if (status.contains('absen') ||
         (item.checkInTime == null && item.alasanIzin == null)) {
       return AttendanceStatus.absent;
     }
 
-    // Check Status Weekend (diambil dari hari, tapi kita cek string status juga jika ada)
     if (status.contains('weekend') ||
         status.contains('libur') ||
         dateIsWeekend(item.attendanceDate)) {
       return AttendanceStatus.weekend;
     }
 
-    // Check Status Incomplete (Check In ada, Check Out null)
     if (item.checkInTime != null && item.checkOutTime == null) {
       return AttendanceStatus.incomplete;
     }
 
-    // Check Status Late/Present (Hanya bisa dibedakan jika ada field "late")
     if (status.contains('late') || status.contains('terlambat')) {
       return AttendanceStatus.late;
     }
 
-    // Default ke Present (sudah check in dan check out, atau statusnya 'masuk')
     return AttendanceStatus.present;
   }
 
@@ -121,7 +109,6 @@ class _HistoryPageState extends State<HistoryPage> {
         children: [
           _buildHeader(),
 
-          // NEW: Status Filter Bar
           _buildSegmentedStatusFilter(),
 
           Consumer<AttendanceProvider>(
@@ -142,7 +129,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Text(
-                        'Error: Gagal memuat riwayat\n${provider.historyErrorMessage?.replaceAll("Exception: ", "")}',
+                        'Error: Failed to load history\n${provider.historyErrorMessage?.replaceAll("Exception: ", "")}',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColor.retroDarkRed,
@@ -156,17 +143,15 @@ class _HistoryPageState extends State<HistoryPage> {
 
               final historyData = provider.historyList ?? [];
 
-              // Filter 1: Berdasarkan Bulan dan Tahun (Client-Side Filter)
               final monthFiltered = historyData.where((item) {
                 final itemDate = item.attendanceDate;
                 return itemDate.year == _currentMonth.year &&
                     itemDate.month == _currentMonth.month;
               });
 
-              // Filter 2: Berdasarkan Status yang Dipilih
               final filteredHistory = monthFiltered.where((item) {
                 if (_selectedStatusFilter == AttendanceStatus.all) {
-                  return true; // Tampilkan semua
+                  return true;
                 }
                 final itemStatus = _getStatusFromApi(item);
                 return itemStatus == _selectedStatusFilter;
@@ -176,7 +161,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 return Expanded(
                   child: Center(
                     child: Text(
-                      'Tidak ada riwayat absensi ${_getStatusDisplay(_selectedStatusFilter)} untuk ${DateFormat('MMMM yyyy').format(_currentMonth)}.',
+                      'No ${_getStatusDisplay(_selectedStatusFilter)} attendance history for ${DateFormat('MMMM yyyy').format(_currentMonth)}.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColor.retroMediumRed,
@@ -187,7 +172,6 @@ class _HistoryPageState extends State<HistoryPage> {
                 );
               }
 
-              // Urutkan berdasarkan tanggal terbaru ke terlama
               filteredHistory.sort(
                 (a, b) => b.attendanceDate.compareTo(a.attendanceDate),
               );
@@ -207,17 +191,15 @@ class _HistoryPageState extends State<HistoryPage> {
                     final String dayOfWeek = DateFormat('E').format(date);
                     final String dayOfMonth = DateFormat('dd').format(date);
 
-                    // Helper untuk format waktu 12-jam (hh:mm a)
                     String formatTime(String? timeStr) {
                       if (timeStr == null || timeStr.isEmpty) return '--';
                       try {
-                        // Gabungkan tanggal item dengan string waktu untuk parsing yang benar
                         final time = DateTime.parse(
                           '${date.toIso8601String().split('T').first} $timeStr',
                         );
                         return DateFormat('hh:mm a').format(time);
                       } catch (e) {
-                        return timeStr; // Fallback jika parsing gagal
+                        return timeStr;
                       }
                     }
 
@@ -243,17 +225,15 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  // NEW WIDGET: Status Filter Bar (Segmented Control Style)
   Widget _buildSegmentedStatusFilter() {
-    // Pilihan Status Filter
     final List<Map<String, dynamic>> statusOptions = [
-      {'value': AttendanceStatus.all, 'label': 'Semua'},
-      {'value': AttendanceStatus.present, 'label': 'Hadir'},
-      {'value': AttendanceStatus.late, 'label': 'Terlambat'},
-      {'value': AttendanceStatus.izin, 'label': 'Izin'},
-      {'value': AttendanceStatus.absent, 'label': 'Alpha'},
-      {'value': AttendanceStatus.incomplete, 'label': 'Belum Pulang'},
-      {'value': AttendanceStatus.weekend, 'label': 'Libur'},
+      {'value': AttendanceStatus.all, 'label': 'All'},
+      {'value': AttendanceStatus.present, 'label': 'Present'},
+      {'value': AttendanceStatus.late, 'label': 'Late'},
+      {'value': AttendanceStatus.izin, 'label': 'Leave/Sick'},
+      {'value': AttendanceStatus.absent, 'label': 'Absent'},
+      {'value': AttendanceStatus.incomplete, 'label': 'Not Checked Out'},
+      {'value': AttendanceStatus.weekend, 'label': 'Holiday'},
     ];
 
     return Padding(
@@ -310,7 +290,7 @@ class _HistoryPageState extends State<HistoryPage> {
       child: Column(
         children: [
           const Text(
-            'Riwayat Absensi',
+            'Attendance History',
             style: TextStyle(
               color: AppColor.retroCream,
               fontSize: 20,
@@ -332,7 +312,6 @@ class _HistoryPageState extends State<HistoryPage> {
                   child: Icon(Icons.chevron_left, color: AppColor.retroCream),
                 ),
 
-                // Tombol Month Picker dan Nama Bulan
                 GestureDetector(
                   onTap: _showMonthPicker,
                   child: Row(
@@ -393,12 +372,11 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
       child: Row(
         children: [
-          // Kolom Tanggal/Hari
           Container(
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: statusStyle['color'] as Color, // Warna sesuai Status
+              color: statusStyle['color'] as Color,
               borderRadius: BorderRadius.circular(15),
             ),
             child: Column(
@@ -425,7 +403,6 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
           const SizedBox(width: 16),
 
-          // Kolom Waktu & Status
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,7 +431,6 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  // Helper untuk kolom Check-In / Check-Out
   Widget _buildTimeColumn(String title, String time) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,23 +457,22 @@ class _HistoryPageState extends State<HistoryPage> {
   String _getStatusDisplay(AttendanceStatus status) {
     switch (status) {
       case AttendanceStatus.all:
-        return 'Semua';
+        return 'All';
       case AttendanceStatus.present:
-        return 'Hadir';
+        return 'Present';
       case AttendanceStatus.absent:
-        return 'Alpha';
+        return 'Absent';
       case AttendanceStatus.late:
-        return 'Terlambat';
+        return 'Late';
       case AttendanceStatus.weekend:
-        return 'Libur';
+        return 'Holiday';
       case AttendanceStatus.incomplete:
-        return 'Belum Pulang';
+        return 'Not Checked Out';
       case AttendanceStatus.izin:
-        return 'Izin/Sakit';
+        return 'Leave/Sick';
     }
   }
 
-  // Helper untuk mendapatkan teks, warna, dan border status
   Map<String, dynamic> _getStatusStyle(AttendanceStatus status) {
     final Map<String, dynamic> baseStyle = {
       'text': _getStatusDisplay(status),
@@ -510,38 +485,38 @@ class _HistoryPageState extends State<HistoryPage> {
     switch (status) {
       case AttendanceStatus.all:
       case AttendanceStatus.present:
-        baseStyle['text'] = 'Hadir';
+        baseStyle['text'] = 'Present';
         baseStyle['color'] = Colors.green;
         baseStyle['textColor'] = Colors.green[800];
         baseStyle['borderColor'] = Colors.green.withOpacity(0.5);
         baseStyle['shadowColor'] = Colors.green.withOpacity(0.1);
         break;
       case AttendanceStatus.absent:
-        baseStyle['text'] = 'Alpha';
+        baseStyle['text'] = 'Absent';
         baseStyle['color'] = AppColor.retroMediumRed;
         baseStyle['textColor'] = AppColor.retroDarkRed;
         baseStyle['borderColor'] = AppColor.retroDarkRed.withOpacity(0.5);
         break;
       case AttendanceStatus.late:
-        baseStyle['text'] = 'Terlambat';
+        baseStyle['text'] = 'Late';
         baseStyle['color'] = Colors.orange;
         baseStyle['textColor'] = Colors.orange[800];
         baseStyle['borderColor'] = Colors.orange.withOpacity(0.5);
         break;
       case AttendanceStatus.weekend:
-        baseStyle['text'] = 'Weekend/Libur';
+        baseStyle['text'] = 'Weekend/Holiday';
         baseStyle['color'] = AppColor.retroLightRed;
         baseStyle['textColor'] = AppColor.retroMediumRed;
         break;
       case AttendanceStatus.incomplete:
-        baseStyle['text'] = 'Belum Pulang';
+        baseStyle['text'] = 'Not Checked Out';
         baseStyle['color'] = Colors.blueGrey;
         baseStyle['textColor'] = Colors.blueGrey[700];
         baseStyle['borderColor'] = Colors.blueGrey.withOpacity(0.5);
         baseStyle['shadowColor'] = Colors.blueGrey.withOpacity(0.1);
         break;
       case AttendanceStatus.izin:
-        baseStyle['text'] = 'Izin/Sakit';
+        baseStyle['text'] = 'Leave/Sick';
         baseStyle['color'] = Colors.amber;
         baseStyle['textColor'] = Colors.amber[800];
         baseStyle['borderColor'] = Colors.amber.withOpacity(0.5);

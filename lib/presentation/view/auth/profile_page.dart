@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/login_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/edit_profile_page.dart';
-import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/profile_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -23,7 +22,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _logout(ProfileProvider provider) async {
-    // Tampilkan dialog konfirmasi (UX yang lebih baik daripada langsung logout)
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -66,7 +64,6 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: Colors.green,
         ),
       );
-      // Navigasi ke halaman utama (Login), membersihkan stack navigasi
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -97,11 +94,11 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               _buildProfileHeader(
                 name: isLoading
-                    ? "Memuat..."
-                    : (user?.name ?? "Nama Tidak Tersedia"),
+                    ? "Loading..."
+                    : (user?.name ?? "Name Not Available"),
                 email: isLoading
-                    ? "Memuat..."
-                    : (user?.email ?? "Email Tidak Tersedia"),
+                    ? "Loading..."
+                    : (user?.email ?? "Email Not Available"),
                 photoUrl: profilePhotoUrl,
                 isLoading: isLoading,
               ),
@@ -180,6 +177,59 @@ class _ProfilePageState extends State<ProfilePage> {
     String? photoUrl,
     required bool isLoading,
   }) {
+    // --- Widget untuk Foto Profil ---
+    Widget profilePhotoWidget = CircleAvatar(
+      radius: 40,
+      backgroundColor: AppColor.retroCream,
+      child: isLoading
+          ? const CircularProgressIndicator(color: AppColor.retroMediumRed)
+          : (photoUrl != null && photoUrl.isNotEmpty)
+          ? ClipOval(
+              child: Image.network(
+                photoUrl,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  Icons.person,
+                  size: 40,
+                  color: AppColor.retroMediumRed,
+                ),
+              ),
+            )
+          : Icon(Icons.person, size: 40, color: AppColor.retroMediumRed),
+    );
+    // ---------------------------------
+
+    // --- Widget untuk Nama dan Email ---
+    Widget nameAndEmailWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.start, // Align teks ke kiri
+      children: [
+        Text(
+          name,
+          style: TextStyle(
+            color: AppColor.retroCream,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          email,
+          style: TextStyle(
+            color: AppColor.retroCream.withOpacity(0.8),
+            fontSize: 14,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+    // ------------------------------------
+
+    // --- Struktur Utama Header ---
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -191,7 +241,7 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'Profile',
               style: TextStyle(
                 color: AppColor.retroCream,
@@ -208,54 +258,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 color: AppColor.retroMediumRed,
                 borderRadius: BorderRadius.circular(25),
               ),
-              child: Column(
+              // Menggunakan Row: Teks di Kiri, Foto di Kanan
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: AppColor.retroCream,
-                    child: isLoading
-                        ? const CircularProgressIndicator(
-                            color: AppColor.retroMediumRed,
-                          )
-                        : (photoUrl != null && photoUrl.isNotEmpty)
-                        ? ClipOval(
-                            child: Image.network(
-                              photoUrl,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Icon(
-                                    Icons.person,
-                                    size: 40,
-                                    color: AppColor.retroMediumRed,
-                                  ),
-                            ),
-                          )
-                        : Icon(
-                            Icons.person,
-                            size: 40,
-                            color: AppColor.retroMediumRed,
-                          ),
+                  Expanded(
+                    child: nameAndEmailWidget, // Nama dan Email (kiri)
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    name,
-                    style: TextStyle(
-                      color: AppColor.retroCream,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    email,
-                    style: TextStyle(
-                      color: AppColor.retroCream.withOpacity(0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+                  const SizedBox(width: 16),
+                  profilePhotoWidget, // Foto Profil (kanan)
                 ],
               ),
             ),
@@ -264,6 +275,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
+    // -----------------------------
   }
 
   Widget _buildMenuTile({

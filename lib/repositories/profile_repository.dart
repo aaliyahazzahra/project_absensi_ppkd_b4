@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:project_absensi_ppkd_b4/models/response/profile_response.dart'
     as profile;
 import 'package:project_absensi_ppkd_b4/service/api_service.dart';
@@ -35,6 +37,15 @@ class ProfileRepository {
   Future<void> logout() async {
     try {
       await _apiService.logout();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<String> uploadProfilePhoto(File imageFile) async {
+    try {
+      final photoUrl = await _apiService.uploadProfilePhoto(imageFile);
+      return photoUrl;
     } catch (e) {
       rethrow;
     }

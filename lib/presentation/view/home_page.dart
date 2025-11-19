@@ -5,7 +5,6 @@ import 'package:project_absensi_ppkd_b4/presentation/view/check_in_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/check_out_page.dart';
 import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/profile_provider.dart';
-
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -16,24 +15,50 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  bool _isInitialLoading = true;
+  bool _dataFetched = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProfileProvider>().fetchProfileData();
-      context.read<AttendanceProvider>().fetchTodayStatusData();
+      _fetchInitialData();
     });
   }
 
-  void _fetchWeeklyStats() {
+  Future<void> _fetchInitialData() async {
+    final provider = context.read<AttendanceProvider>();
+
+    if (mounted) {
+      setState(() {
+        _isInitialLoading = true;
+      });
+    }
+
+    try {
+      await context.read<ProfileProvider>().fetchProfileData();
+      await provider.fetchTodayStatusData();
+      _fetchWeeklyStats(provider);
+    } catch (e) {
+      debugPrint('Error fetching initial data: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+          _dataFetched = true;
+        });
+      }
+    }
+  }
+
+  void _fetchWeeklyStats(AttendanceProvider provider) {
     final now = DateTime.now();
-    // Ambil 7 hari terakhir (lebih sederhana)
     DateTime endDate = now;
     DateTime startDate = now.subtract(const Duration(days: 6));
 
     final formatter = DateFormat('yyyy-MM-dd');
 
-    context.read<AttendanceProvider>().fetchAttendanceStats(
+    provider.fetchAttendanceStats(
       startDate: formatter.format(startDate),
       endDate: formatter.format(endDate),
     );
@@ -54,6 +79,12 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isInitialLoading) {
+      return Center(
+        child: CircularProgressIndicator(color: AppColor.retroDarkRed),
+      );
+    }
+
     final profileProvider = context.watch<ProfileProvider>();
     final attendanceProvider = context.watch<AttendanceProvider>();
 
@@ -65,12 +96,12 @@ class _HomePageState extends State<HomePage> {
     final String todayWorkingHours = attendanceProvider.totalWorkingHoursToday;
 
     final String weeklyStatsSubValue = attendanceProvider.isLoadingStats
-        ? "Memuat statistik mingguan..."
-        : "Statistik dari ${DateFormat('dd MMM').format(DateTime.now().subtract(const Duration(days: 6)))} - ${DateFormat('dd MMM').format(DateTime.now())}";
+        ? "Loading weekly statistics..."
+        : "Statistics from ${DateFormat('dd MMM').format(DateTime.now().subtract(const Duration(days: 6)))} - ${DateFormat('dd MMM').format(DateTime.now())}";
 
     String userName = profileProvider.isLoading
-        ? "Memuat..."
-        : (profileProvider.userProfile?.name ?? "Pengguna");
+        ? "Loading..."
+        : (profileProvider.userProfile?.name ?? "User");
 
     String checkInTime = attendanceProvider.isLoadingStatus
         ? "..."
@@ -98,59 +129,54 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 24),
 
             _buildInfoCard(
-              title: "Total Jam Kerja Hari Ini",
+              title: "Total Working Hours Today", // Diterjemahkan
               icon: Icons.timer_outlined,
               mainValue: attendanceProvider.isLoadingStatus
                   ? "..."
                   : todayWorkingHours,
-              subValue: "Durasi kerja yang tercatat hari ini.",
+              subValue: "Recorded working duration today.", // Diterjemahkan
             ),
             const SizedBox(height: 24),
 
             _buildInfoCard(
-              title: "Weekly Overview",
-              icon: Icons.more_horiz_outlined,
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32.0),
-                  child: attendanceProvider.isLoadingStats
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 32.0),
-                            child: CircularProgressIndicator(
-                              color: AppColor.retroMediumRed,
-                            ),
-                          ),
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const SizedBox(height: 16),
-                            _buildStatRow(
-                              "Total Hari Masuk",
-                              totalMasuk.toString(),
-                              Colors.green,
-                            ),
-                            _buildStatRow(
-                              "Total Hari Izin",
-                              totalIzin.toString(),
-                              Colors.amber,
-                            ),
-                            _buildStatRow(
-                              "Total Hari Alpha",
-                              totalAbsen.toString(),
-                              AppColor.retroDarkRed,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              weeklyStatsSubValue,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: AppColor.retroMediumRed),
-                            ),
-                          ],
+              title: "Weekly Attendance Statistics", // Diterjemahkan
+              icon: Icons.bar_chart_outlined,
+              child: attendanceProvider.isLoadingStats
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32.0),
+                        child: CircularProgressIndicator(
+                          color: AppColor.retroMediumRed,
                         ),
-                ),
-              ),
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 16),
+                        _buildStatRow(
+                          "Total Days Attended", // Diterjemahkan
+                          totalMasuk.toString(),
+                          Colors.green,
+                        ),
+                        _buildStatRow(
+                          "Total Days Permitted Leave", // Diterjemahkan
+                          totalIzin.toString(),
+                          Colors.amber,
+                        ),
+                        _buildStatRow(
+                          "Total Days Absent", // Diterjemahkan
+                          totalAbsen.toString(),
+                          AppColor.retroDarkRed,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          weeklyStatsSubValue,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColor.retroMediumRed),
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -291,42 +317,49 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildActionButtons(BuildContext context) {
     final attendanceProvider = context.watch<AttendanceProvider>();
-
     final todayStatus = attendanceProvider.todayStatus;
 
-    final bool isClockInEnabled = todayStatus?.checkInTime == null;
+    final bool isCheckingIn = attendanceProvider.isCheckingIn;
+    final bool isCheckingOut = attendanceProvider.isCheckingOut;
 
-    final bool isClockOutEnabled =
-        todayStatus?.checkInTime != null && todayStatus?.checkOutTime == null;
+    final bool hasCheckedIn = todayStatus?.checkInTime != null;
+    final bool hasCheckedOut = todayStatus?.checkOutTime != null;
+
+    final bool isCheckInEnabled =
+        !hasCheckedIn && !isCheckingIn && !isCheckingOut;
+    final bool isCheckOutEnabled =
+        hasCheckedIn && !hasCheckedOut && !isCheckingIn && !isCheckingOut;
 
     return Row(
       children: [
         Expanded(
           child: _buildActionButton(
-            label: "Clock In",
-            icon: Icons.login,
+            label: isCheckingIn ? "Loading..." : "Check In",
+            icon: isCheckingIn ? Icons.hourglass_empty : Icons.login,
             isPrimary: true,
-            isDisabled: !isClockInEnabled,
-            onPressed: () {
-              Navigator.push(
+            isDisabled: !isCheckInEnabled,
+            onPressed: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const CheckInPage()),
               );
+              _fetchInitialData();
             },
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: _buildActionButton(
-            label: "Clock Out",
-            icon: Icons.logout,
+            label: isCheckingOut ? "Loading..." : "Check Out",
+            icon: isCheckingOut ? Icons.hourglass_empty : Icons.logout,
             isPrimary: false,
-            isDisabled: !isClockOutEnabled,
-            onPressed: () {
-              Navigator.push(
+            isDisabled: !isCheckOutEnabled,
+            onPressed: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const CheckOutPage()),
               );
+              _fetchInitialData();
             },
           ),
         ),
@@ -338,7 +371,7 @@ class _HomePageState extends State<HomePage> {
     required String label,
     required IconData icon,
     required bool isPrimary,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     required bool isDisabled,
   }) {
     return SizedBox(

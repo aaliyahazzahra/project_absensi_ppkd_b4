@@ -35,11 +35,11 @@ class AuthProvider with ChangeNotifier {
   bool get isResettingPassword => _isResettingPassword;
   String? get resetPasswordErrorMessage => _resetPasswordErrorMessage;
 
-  Future<bool> handleLogin(String email, String password) async {
+  Future<String?> handleLogin(String email, String password) async {
     if (_repository == null) {
       _errorMessage = "Service not ready";
       notifyListeners();
-      return false;
+      return null;
     }
 
     _isLoading = true;
@@ -47,15 +47,15 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _repository!.login(email, password);
+      final token = await _repository!.login(email, password);
       _isLoading = false;
       notifyListeners();
-      return true;
+      return token;
     } catch (e) {
       _errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
-      return false;
+      return null;
     }
   }
 

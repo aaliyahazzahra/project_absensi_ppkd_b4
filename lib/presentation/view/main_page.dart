@@ -19,7 +19,7 @@ class _MainPageState extends State<MainPage> {
     HomePage(), // Tab 1
     HistoryPage(), // Tab 2
     ProfilePage(), // Tab 3
-    Center(child: Text('More Page')), // Tab 4
+    // Center(child: Text('More Page')), // Tab 4
   ];
 
   void _onItemTapped(int index) {
@@ -49,11 +49,11 @@ class _MainPageState extends State<MainPage> {
             activeIcon: Icon(Icons.person),
             label: 'Profile',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz_outlined),
-            activeIcon: Icon(Icons.more_horiz),
-            label: 'More',
-          ),
+          // BottomNavigationBarItem(
+          //   icon: Icon(Icons.more_horiz_outlined),
+          //   activeIcon: Icon(Icons.more_horiz),
+          //   label: 'More',
+          // ),
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,

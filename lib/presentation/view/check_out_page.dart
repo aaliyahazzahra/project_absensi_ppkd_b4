@@ -102,7 +102,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
     final String attendanceDate = DateFormat(
       'yyyy-MM-dd',
     ).format(now); // Format YYYY-MM-DD
-    final String checkOutTime = DateFormat('HH:mm:ss').format(now);
+    final String checkOutTime = DateFormat('HH:mm').format(now);
 
     // 1. Ambil provider
     final provider = context.read<AttendanceProvider>();

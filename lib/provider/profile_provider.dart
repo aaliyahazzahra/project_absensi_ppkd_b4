@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/models/response/profile_response.dart'
     as profile;
@@ -12,20 +14,22 @@ class ProfileProvider with ChangeNotifier {
     _repository = repository;
   }
 
-  // --- State Variables ---
   bool _isLoading = false;
   profile.Data? _userProfile;
   String? _errorMessage;
 
-  // --- State Variables (Update Profile) ---
   bool _isUpdating = false;
   String? _updateErrorMessage;
 
-  // --- State Variables (Logout) ---
-  bool _isLoggingOut = false; // NEW
-  String? _logoutErrorMessage; // NEW
+  bool _isLoggingOut = false;
+  String? _logoutErrorMessage;
 
-  // --- Getters (agar UI bisa "membaca" state) ---
+  bool _isUploadingPhoto = false;
+  String? _uploadPhotoErrorMessage;
+
+  bool get isUploadingPhoto => _isUploadingPhoto;
+  String? get uploadPhotoErrorMessage => _uploadPhotoErrorMessage;
+
   bool get isLoading => _isLoading;
   profile.Data? get userProfile => _userProfile;
   String? get errorMessage => _errorMessage;
@@ -34,7 +38,6 @@ class ProfileProvider with ChangeNotifier {
   bool get isLoggingOut => _isLoggingOut;
   String? get logoutErrorMessage => _logoutErrorMessage;
 
-  // --- Logic Function ---
   Future<void> fetchProfileData() async {
     if (_repository == null) {
       _errorMessage = "Service not ready";
@@ -43,25 +46,20 @@ class ProfileProvider with ChangeNotifier {
       return;
     }
 
-    // 1. Set state ke loading
     _isLoading = true;
     _errorMessage = null;
 
     try {
-      // 2. Panggil REPOSITORY, bukan ApiService
       final data = await _repository!.fetchProfile();
       _userProfile = data;
     } catch (e) {
-      // 3. Tangani error
       _errorMessage = e.toString();
     } finally {
-      // 4. Set loading selesai
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Mencoba update profil dan mengembalikan `true` jika sukses.
   Future<bool> handleUpdateProfile({
     required String name,
     required String email,
@@ -73,13 +71,11 @@ class ProfileProvider with ChangeNotifier {
       return false;
     }
 
-    // 1. Set state ke loading
     _isUpdating = true;
     _updateErrorMessage = null;
     notifyListeners();
 
     try {
-      // 2. Panggil REPOSITORY
       final updatedData = await _repository!.updateProfile(
         name: name,
         email: email,
@@ -92,11 +88,10 @@ class ProfileProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      // 4. JIKA GAGAL:
       _updateErrorMessage = e.toString();
       _isUpdating = false;
       notifyListeners();
-      return false; // Kembalikan false (gagal)
+      return false;
     }
   }
 
@@ -122,6 +117,35 @@ class ProfileProvider with ChangeNotifier {
     } catch (e) {
       _logoutErrorMessage = e.toString().replaceAll("Exception: ", "");
       _isLoggingOut = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> handleUploadProfilePhoto(File imageFile) async {
+    if (_repository == null) {
+      _uploadPhotoErrorMessage = "Service not ready";
+      notifyListeners();
+      return false;
+    }
+
+    _isUploadingPhoto = true;
+    _uploadPhotoErrorMessage = null;
+    notifyListeners();
+
+    try {
+      final newPhotoUrl = await _repository!.uploadProfilePhoto(imageFile);
+
+      if (_userProfile != null) {
+        _userProfile = _userProfile!.copyWith(profilePhoto: newPhotoUrl);
+      }
+
+      _isUploadingPhoto = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _uploadPhotoErrorMessage = e.toString().replaceAll("Exception: ", "");
+      _isUploadingPhoto = false;
       notifyListeners();
       return false;
     }

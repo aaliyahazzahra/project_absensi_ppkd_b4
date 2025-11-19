@@ -8,16 +8,17 @@ class AuthRepository {
   AuthRepository({required ApiService apiService}) : _apiService = apiService;
 
   // Fungsi login
-  Future<auth.Data> login(String email, String password) async {
+  Future<String?> login(String email, String password) async {
     try {
-      // 1. Panggil ApiService
       final authData = await _apiService.login(email, password);
 
-      // 2. Di sinilah tempatnya jika Anda ingin menyimpan data
-      //    user (authData.user) ke database lokal (SQLite/Hive)
-      //    Tapi untuk sekarang, kita teruskan saja datanya.
+      final String? token = authData.token;
 
-      return authData;
+      if (token == null || token.isEmpty) {
+        throw Exception("Login failed: Token not received from server.");
+      }
+
+      return token;
     } catch (e) {
       rethrow;
     }

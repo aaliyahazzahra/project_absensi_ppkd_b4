@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
+import 'package:project_absensi_ppkd_b4/core/preference_handler.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/forgot_password_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/register_page.dart';
@@ -25,16 +26,25 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  // ... di dalam _LoginPageState
   Future<void> _login() async {
     final authProvider = context.read<AuthProvider>();
 
-    final bool isSuccess = await authProvider.handleLogin(
+    // Asumsi handleLogin kini mengembalikan token jika sukses
+    // Jika tidak, Anda perlu memodifikasi AuthProvider agar token bisa diakses
+    final String? token = await authProvider.handleLogin(
       _emailController.text,
       _passwordController.text,
     );
 
-    if (isSuccess) {
+    // Periksa apakah login sukses (asumsi sukses jika token tidak null)
+    if (token != null) {
+      // 🎯 SIMPAN STATUS LOGIN DAN TOKEN
+      await PreferenceHandler.saveLoginStatus(true);
+      await PreferenceHandler.saveToken(token);
+
       if (mounted) {
+        // Navigasi ke MainPage (rute '/home' harus mengarah ke MainPage)
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const MainPage()),

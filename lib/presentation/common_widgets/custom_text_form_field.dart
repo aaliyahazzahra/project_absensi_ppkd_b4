@@ -9,6 +9,10 @@ class CustomTextFormField extends StatelessWidget {
   final bool obscureText;
   final String? Function(String?)? validator;
 
+  final bool readOnly;
+  final Color? fillColor;
+  final Color? labelColor;
+
   const CustomTextFormField({
     super.key,
     required this.label,
@@ -17,17 +21,28 @@ class CustomTextFormField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.obscureText = false,
     this.validator,
+    this.readOnly = false,
+    this.fillColor,
+    this.labelColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Color finalLabelColor = readOnly
+        ? labelColor ?? Colors.grey[700]!
+        : AppColor.retroDarkRed;
+
+    final Color finalFillColor = readOnly
+        ? fillColor ?? Colors.grey[200]!
+        : AppColor.retroCream.withOpacity(0.5);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: AppColor.retroDarkRed,
+            color: finalLabelColor,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -36,13 +51,14 @@ class CustomTextFormField extends StatelessWidget {
 
         TextFormField(
           controller: controller,
+          readOnly: readOnly,
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: TextStyle(
               color: AppColor.retroMediumRed.withOpacity(0.6),
             ),
             filled: true,
-            fillColor: AppColor.retroCream.withOpacity(0.5),
+            fillColor: finalFillColor,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -54,7 +70,9 @@ class CustomTextFormField extends StatelessWidget {
           ),
           keyboardType: keyboardType,
           obscureText: obscureText,
-          style: TextStyle(color: AppColor.retroDarkRed),
+          style: TextStyle(
+            color: readOnly ? Colors.grey[600] : AppColor.retroDarkRed,
+          ),
           validator: validator,
           autovalidateMode: AutovalidateMode.onUserInteraction,
         ),

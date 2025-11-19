@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:project_absensi_ppkd_b4/models/response/attendance_stats_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/history_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/today_status_response.dart';
-import 'package:project_absensi_ppkd_b4/models/response/attendance_stats_response.dart';
 import 'package:project_absensi_ppkd_b4/repositories/attendance_repository.dart';
 
 class AttendanceProvider with ChangeNotifier {
@@ -101,11 +101,9 @@ class AttendanceProvider with ChangeNotifier {
     } else {
       _totalWorkingHoursToday = "0h 0m";
     }
-    // Hanya notifyListeners() jika state total working hours berubah
-    // (notifyListeners() sudah dipanggil di fetchTodayStatusData/handleCheckOut)
   }
 
-  // Fungsi BARU: Fetch Attendance Stats
+  // Fungsi: Fetch Attendance Stats
   Future<void> fetchAttendanceStats({
     required String startDate,
     required String endDate,
@@ -146,13 +144,21 @@ class AttendanceProvider with ChangeNotifier {
     _statusErrorMessage = null;
 
     try {
-      _todayStatus = await _repository!.fetchTodayStatus();
-      _calculateTodayWorkingHours(); // Panggil setelah status didapat
+      final response = await _repository!.fetchTodayStatus();
+
+      // Cek apakah data valid. Jika null, _todayStatus diset null.
+      _todayStatus = response;
+
+      // Panggil perhitungan jam kerja (akan menjadi "0h 0m" jika _todayStatus null/belum checkout)
+      _calculateTodayWorkingHours();
     } catch (e) {
       _statusErrorMessage = e.toString();
+      // Penting: Jika ada error, set status menjadi null agar UI menunjukkan belum absen (kecuali error server)
+      _todayStatus = null;
+      _totalWorkingHoursToday = "0h 0m";
     } finally {
       _isLoadingStatus = false;
-      notifyListeners();
+      notifyListeners(); // Memicu rebuild di Home Page
     }
   }
 
@@ -169,9 +175,6 @@ class AttendanceProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Asumsi repository sudah memiliki fetchAttendanceHistory
-      // Kita tidak bisa menggunakan _repository! karena itu tidak ada di konteks
-      // Tapi karena ini adalah provider, kita harus asumsikan ada
       _historyList = await _repository!.fetchAttendanceHistory();
     } catch (e) {
       _historyErrorMessage = e.toString();
@@ -201,6 +204,7 @@ class AttendanceProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // 1. Lakukan Check-In
       await _repository!.checkIn(
         latitude: latitude,
         longitude: longitude,
@@ -210,15 +214,25 @@ class AttendanceProvider with ChangeNotifier {
         status: status,
       );
 
-      // Panggil ulang status hari ini (ini yang akan memicu perhitungan jam kerja)
-      await fetchTodayStatusData();
-      // fetchTodayStatusData sudah memanggil _calculateTodayWorkingHours()
+      // 2. KOREKSI: Manual update _todayStatus dengan data yang PASTI ada
+      _todayStatus = TodayStatusData(
+        // Menggunakan DateTime.parse()
+        attendanceDate: DateTime.parse(attendanceDate),
+        checkInTime: checkInTime, // String waktu (misal: "08:10")
+        checkOutTime: null,
+        status: status,
+        checkInAddress: address,
+        checkOutAddress: null,
+      );
 
-      // Tambahkan pembaruan statistik mingguan jika diperlukan
-      // _fetchWeeklyStats();
+      _calculateTodayWorkingHours();
 
+      // 3. Matikan status loading. Ini memicu rebuild di Home Page dengan data baru.
       _isCheckingIn = false;
       notifyListeners();
+
+      // 🛑 fetchTodayStatusData() TIDAK ADA DI SINI
+
       return true;
     } catch (e) {
       _checkInErrorMessage = e.toString();
@@ -247,6 +261,7 @@ class AttendanceProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // 1. Lakukan Check-Out
       await _repository!.checkOut(
         latitude: latitude,
         longitude: longitude,
@@ -255,15 +270,23 @@ class AttendanceProvider with ChangeNotifier {
         checkOutTime: checkOutTime,
       );
 
-      // Panggil ulang status hari ini (ini yang akan memicu perhitungan jam kerja)
-      await fetchTodayStatusData();
-      // fetchTodayStatusData sudah memanggil _calculateTodayWorkingHours()
+      // 2. KOREKSI: Manual update _todayStatus
+      if (_todayStatus != null) {
+        _todayStatus = TodayStatusData(
+          attendanceDate: _todayStatus!.attendanceDate,
+          checkInTime: _todayStatus!.checkInTime, // Pertahankan Check-In lama
+          checkOutTime: checkOutTime, // Masukkan waktu Check-Out baru
+          status: "masuk",
+          checkInAddress: _todayStatus!.checkInAddress,
+          checkOutAddress: address,
+        );
+      }
 
-      // Tambahkan pembaruan statistik mingguan jika diperlukan
-      // _fetchWeeklyStats();
+      _calculateTodayWorkingHours();
 
       _isCheckingOut = false;
       notifyListeners();
+
       return true;
     } catch (e) {
       _checkOutErrorMessage = e.toString();

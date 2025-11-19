@@ -157,8 +157,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                               'Enter new password',
                               TextInputType.visiblePassword,
                               (value) {
-                                if (value == null || value.length < 6)
+                                if (value == null || value.length < 6) {
                                   return 'Password must be at least 6 characters.';
+                                }
                                 return null;
                               },
                               isObscure: true,
@@ -171,8 +172,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                               'Re-enter new password',
                               TextInputType.visiblePassword,
                               (value) {
-                                if (value != _passwordController.text)
+                                if (value != _passwordController.text) {
                                   return 'Passwords do not match.';
+                                }
                                 return null;
                               },
                               isObscure: true,

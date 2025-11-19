@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/login_page.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/main_page.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/splash_screen.dart';
 import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/dropdown_provider.dart';
@@ -76,7 +78,13 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         ),
 
-        home: const LoginPage(),
+        initialRoute: '/',
+
+        routes: {
+          '/': (context) => const SplashScreen(), // Rute awal
+          '/login': (context) => const LoginPage(), // Jika belum login
+          '/home': (context) => const MainPage(), // Jika sudah login
+        },
       ),
     );
   }

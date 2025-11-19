@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:developer';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:project_absensi_ppkd_b4/models/response/attendance_stats_response.dart';
@@ -297,7 +299,7 @@ class ApiService {
           'Authorization': 'Bearer $token',
         },
       );
-
+      log(token);
       final Map<String, dynamic> responseBody = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
@@ -379,6 +381,57 @@ class ApiService {
     }
   }
 
+  Future<String> uploadProfilePhoto(File imageFile) async {
+    final String? token = await _getToken();
+    if (token == null) throw Exception('Token not found. Please login again.');
+
+    try {
+      // 1. Buat request multipart
+      final url = Uri.parse(Endpoints.editProfilePhoto);
+      var request = http.MultipartRequest(
+        'PUT',
+        url,
+      ); // Gunakan PUT sesuai Postman
+
+      // 2. Tambahkan header
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      });
+
+      // 3. Tambahkan file
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'profile_photo', // <-- SESUAIKAN DENGAN KEY API BACKEND
+          imageFile.path,
+        ),
+      );
+
+      // 4. Kirim request
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      final Map<String, dynamic> responseBody = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        // Berdasarkan Postman, respons berisi field 'profile_photo' (URL baru)
+        final String? newPhotoUrl = responseBody['data']['profile_photo'];
+
+        if (newPhotoUrl != null) {
+          return newPhotoUrl;
+        } else {
+          throw Exception('Upload successful but photo URL not received');
+        }
+      } else {
+        throw Exception(
+          responseBody['message'] ?? 'Failed to upload profile photo',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to server: $e');
+    }
+  }
+
   Future<void> requestOtp({required String email}) async {
     try {
       final response = await http.post(
@@ -437,7 +490,7 @@ class ApiService {
     final Uri url = Uri.parse(
       Endpoints.todayStatus,
     ).replace(queryParameters: {'attendance_date': today});
-
+    log(url.toString());
     try {
       final response = await http.get(
         url,

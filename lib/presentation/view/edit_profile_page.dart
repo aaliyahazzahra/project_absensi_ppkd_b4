@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
 import 'package:project_absensi_ppkd_b4/provider/profile_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -14,6 +17,9 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+
+  File? _selectedImageFile;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -34,14 +40,47 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _saveChanges(ProfileProvider provider) async {
-    final isSuccess = await provider.handleUpdateProfile(
-      name: _nameController.text,
-      email: _emailController.text,
-    );
+    // 1. Cek perubahan yang dilakukan
+    final bool nameChanged =
+        _nameController.text != (provider.userProfile?.name ?? '');
+    final bool imageChanged = _selectedImageFile != null;
+
+    // Jika tidak ada perubahan sama sekali
+    if (!nameChanged && !imageChanged) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No changes detected.'),
+          backgroundColor: Colors.blueGrey,
+        ),
+      );
+      Navigator.pop(context);
+      return;
+    }
+
+    bool success = true;
+
+    // 2. Update Nama (jika ada perubahan)
+    if (nameChanged) {
+      success = await provider.handleUpdateProfile(
+        name: _nameController.text,
+        email: _emailController.text,
+      );
+    }
+
+    // 3. Upload Foto (jika ada perubahan DAN update nama sebelumnya berhasil)
+    if (success && imageChanged) {
+      final uploadSuccess = await provider.handleUploadProfilePhoto(
+        _selectedImageFile!,
+      );
+      // Status akhir adalah hasil dari upload foto jika itu terjadi
+      success = uploadSuccess;
+    }
 
     if (!mounted) return;
 
-    if (isSuccess) {
+    // 4. Tampilkan Snackbar berdasarkan hasil akhir
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile updated successfully!'),
@@ -50,14 +89,75 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
       Navigator.pop(context);
     } else {
+      // Prioritaskan error foto jika ada, lalu error update info
+      String errorMessage =
+          provider.uploadPhotoErrorMessage ??
+          provider.updateErrorMessage ??
+          'Failed to update profile';
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            provider.updateErrorMessage ?? 'Failed to update profile',
-          ),
+          content: Text(errorMessage),
           backgroundColor: AppColor.retroDarkRed,
         ),
       );
+    }
+  }
+
+  void _showImageSourceActionSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColor.retroCream,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: Icon(
+                  Icons.photo_library,
+                  color: AppColor.retroDarkRed,
+                ),
+                title: Text(
+                  'Photo Gallery',
+                  style: TextStyle(color: AppColor.retroDarkRed),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_camera, color: AppColor.retroDarkRed),
+                title: Text(
+                  'Camera',
+                  style: TextStyle(color: AppColor.retroDarkRed),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await _picker.pickImage(
+      source: source,
+      imageQuality: 80,
+      maxWidth: 800,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImageFile = File(pickedFile.path);
+      });
     }
   }
 
@@ -145,41 +245,72 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Widget _buildChangePhotoCard() {
-    return _buildBaseCard(
-      child: Column(
-        children: [
-          Stack(
-            children: [
-              CircleAvatar(
-                radius: 45,
-                backgroundColor: AppColor.retroMediumRed,
-                child: Icon(Icons.person, size: 45, color: AppColor.retroCream),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: CircleAvatar(
-                  radius: 15,
-                  backgroundColor: AppColor.retroDarkRed,
-                  child: Icon(
-                    Icons.camera_alt,
-                    size: 16,
-                    color: AppColor.retroCream,
+    final profileProvider = context.watch<ProfileProvider>();
+    final currentPhotoUrl = profileProvider.userProfile?.profilePhoto;
+
+    Widget avatarChild;
+    if (_selectedImageFile != null) {
+      avatarChild = ClipOval(
+        child: Image.file(
+          _selectedImageFile!,
+          width: 90,
+          height: 90,
+          fit: BoxFit.cover,
+        ),
+      );
+    } else if (currentPhotoUrl != null && currentPhotoUrl.isNotEmpty) {
+      avatarChild = ClipOval(
+        child: Image.network(
+          currentPhotoUrl,
+          width: 90,
+          height: 90,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(Icons.person, size: 45, color: AppColor.retroCream),
+        ),
+      );
+    } else {
+      avatarChild = Icon(Icons.person, size: 45, color: AppColor.retroCream);
+    }
+
+    return GestureDetector(
+      onTap: _showImageSourceActionSheet,
+      child: _buildBaseCard(
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 45,
+                  backgroundColor: AppColor.retroMediumRed,
+                  child: avatarChild,
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: CircleAvatar(
+                    radius: 15,
+                    backgroundColor: AppColor.retroDarkRed,
+                    child: Icon(
+                      Icons.camera_alt,
+                      size: 16,
+                      color: AppColor.retroCream,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Change Photo',
-            style: TextStyle(
-              color: AppColor.retroDarkRed,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              'Change Photo',
+              style: TextStyle(
+                color: AppColor.retroDarkRed,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -199,6 +330,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
             label: 'Email Address',
             controller: _emailController,
             hintText: 'your.email@example.com',
+            readOnly: true,
+            fillColor: Colors.grey[200],
+            labelColor: Colors.grey[700],
           ),
         ],
       ),
@@ -208,8 +342,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget _buildActionButtons(BuildContext context) {
     return Consumer<ProfileProvider>(
       builder: (context, provider, child) {
-        final bool isLoading = provider.isUpdating;
-
+        final bool isLoading = provider.isUpdating || provider.isUploadingPhoto;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
