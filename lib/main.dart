@@ -73,7 +73,8 @@ class MyApp extends StatelessWidget {
       ],
 
       child: MaterialApp(
-        title: 'Flutter Demo',
+        title: 'Aplikasi Absen',
+        debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         ),
@@ -81,9 +82,9 @@ class MyApp extends StatelessWidget {
         initialRoute: '/',
 
         routes: {
-          '/': (context) => const SplashScreen(), // Rute awal
-          '/login': (context) => const LoginPage(), // Jika belum login
-          '/home': (context) => const MainPage(), // Jika sudah login
+          '/': (context) => const SplashScreen(),
+          '/login': (context) => const LoginPage(),
+          '/home': (context) => const MainPage(),
         },
       ),
     );

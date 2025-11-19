@@ -22,11 +22,13 @@ class ProfileRepository {
   Future<profile.Data> updateProfile({
     required String name,
     required String email,
+    required String? profilePhoto,
   }) async {
     try {
       final updatedProfileData = await _apiService.updateProfile(
         name: name,
         email: email,
+        profilePhoto: profilePhoto,
       );
       return updatedProfileData;
     } catch (e) {

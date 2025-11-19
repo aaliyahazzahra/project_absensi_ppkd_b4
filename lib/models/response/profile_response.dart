@@ -65,8 +65,8 @@ class Data {
     updatedAt: json["updated_at"] == null
         ? null
         : DateTime.parse(json["updated_at"]),
-    batchId: json["batch_id"] as int?,
-    trainingId: json["training_id"] as String?,
+    batchId: json["batch_id"],
+    trainingId: json["training_id"],
     training: json["training"] == null
         ? null
         : Training.fromJson(json["training"]),
