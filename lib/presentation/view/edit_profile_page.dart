@@ -40,12 +40,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _saveChanges(ProfileProvider provider) async {
-    // 1. Cek perubahan yang dilakukan
     final bool nameChanged =
         _nameController.text != (provider.userProfile?.name ?? '');
     final bool imageChanged = _selectedImageFile != null;
 
-    // Jika tidak ada perubahan sama sekali
     if (!nameChanged && !imageChanged) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +58,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     bool success = true;
 
-    // 2. Update Nama (jika ada perubahan)
     if (nameChanged) {
       success = await provider.handleUpdateProfile(
         name: _nameController.text,
@@ -68,18 +65,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
     }
 
-    // 3. Upload Foto (jika ada perubahan DAN update nama sebelumnya berhasil)
     if (success && imageChanged) {
       final uploadSuccess = await provider.handleUploadProfilePhoto(
         _selectedImageFile!,
       );
-      // Status akhir adalah hasil dari upload foto jika itu terjadi
       success = uploadSuccess;
     }
 
     if (!mounted) return;
 
-    // 4. Tampilkan Snackbar berdasarkan hasil akhir
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -89,7 +83,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
       Navigator.pop(context);
     } else {
-      // Prioritaskan error foto jika ada, lalu error update info
       String errorMessage =
           provider.uploadPhotoErrorMessage ??
           provider.updateErrorMessage ??

@@ -76,12 +76,13 @@ class ProfileProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      final currentPhoto = _userProfile?.profilePhoto;
       final updatedData = await _repository!.updateProfile(
         name: name,
         email: email,
+        profilePhoto: currentPhoto,
       );
 
-      // 3. JIKA SUKSES:
       _userProfile = updatedData;
 
       _isUpdating = false;

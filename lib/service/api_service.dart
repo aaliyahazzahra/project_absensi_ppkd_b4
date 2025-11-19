@@ -348,7 +348,7 @@ class ApiService {
   Future<profile.Data> updateProfile({
     required String name,
     required String email,
-    // TODO: Tambahkan field lain jika ada (misal: password)
+    required String? profilePhoto,
   }) async {
     final String? token = await _getToken();
     if (token == null) throw Exception('Token not found. Please login again.');
@@ -361,7 +361,11 @@ class ApiService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'name': name, 'email': email}),
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'profile_photo': profilePhoto,
+        }),
       );
 
       final Map<String, dynamic> responseBody = jsonDecode(response.body);
