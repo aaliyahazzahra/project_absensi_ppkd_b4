@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:project_absensi_ppkd_b4/core/preference_handler.dart';
 import 'package:project_absensi_ppkd_b4/models/response/attendance_stats_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/auth_response.dart'
     as auth;
@@ -530,9 +531,9 @@ class ApiService {
     //
     // Tapi untuk sekarang, menghapus token lokal sudah 100% cukup
     // untuk meng-logout-kan user dari APLIKASI.
-
     try {
       await _removeToken();
+      PreferenceHandler.clearAllAuthData();
     } catch (e) {
       throw Exception('Failed to remove token: $e');
     }

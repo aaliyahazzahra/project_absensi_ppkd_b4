@@ -13,26 +13,26 @@ class PreferenceHandler {
   static Future<void> saveToken(String value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, value);
+    await saveLoginStatus(true);
   }
 
   // --- GET DATA ---
-  // Mengembalikan nilai boolean, default-nya false jika tidak ada data
   static Future<bool> getLoginStatus() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_isLoginKey) ?? false;
+    return prefs.getString(_tokenKey) != null;
   }
 
-  // Mengembalikan nilai String, default-nya null jika tidak ada data
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
   }
 
-  // --- REMOVE DATA ---
-  static Future<void> removeLoginStatus() async {
+  // --- REMOVE DATA (Logout Function) ---
+  // Ganti nama fungsi menjadi clearAllAuthData agar lebih mencerminkan aksi
+  static Future<void> clearAllAuthData() async {
     final prefs = await SharedPreferences.getInstance();
+    // PERBAIKAN: Hapus kedua key secara terpisah dan benar
     await prefs.remove(_isLoginKey);
-    // Tambahkan juga penghapusan token saat logout
     await prefs.remove(_tokenKey);
   }
 }

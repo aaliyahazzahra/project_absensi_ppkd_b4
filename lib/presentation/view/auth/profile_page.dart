@@ -13,12 +13,30 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  bool _isInitialFetchDone = false;
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProfileProvider>().fetchProfileData();
-    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final provider = context.read<ProfileProvider>();
+
+    if (!_isInitialFetchDone &&
+        provider.userProfile == null &&
+        !provider.isLoading &&
+        !provider.isLoggingOut) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          provider.fetchProfileData().then((_) {
+            _isInitialFetchDone = true;
+          });
+        }
+      });
+    }
   }
 
   Future<void> _logout(ProfileProvider provider) async {
@@ -64,10 +82,12 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: Colors.green,
         ),
       );
-      Navigator.pushAndRemoveUntil(
-        context,
+
+      _isInitialFetchDone = false;
+
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginPage()),
-        (route) => false,
+        (Route<dynamic> route) => false,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -199,11 +219,9 @@ class _ProfilePageState extends State<ProfilePage> {
             )
           : Icon(Icons.person, size: 40, color: AppColor.retroMediumRed),
     );
-    // ---------------------------------
 
-    // --- Widget untuk Nama dan Email ---
     Widget nameAndEmailWidget = Column(
-      crossAxisAlignment: CrossAxisAlignment.start, // Align teks ke kiri
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           name,
@@ -227,9 +245,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ],
     );
-    // ------------------------------------
 
-    // --- Struktur Utama Header ---
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
