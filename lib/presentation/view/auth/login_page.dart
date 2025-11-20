@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:project_absensi_ppkd_b4/core/preference_handler.dart';
+import 'package:project_absensi_ppkd_b4/core/constant/app_color.dart';
+import 'package:project_absensi_ppkd_b4/core/utils/preference_handler.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/forgot_password_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/register_page.dart';
-import 'package:project_absensi_ppkd_b4/presentation/view/main_page.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/main/main_page.dart';
 import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -26,25 +26,19 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // ... di dalam _LoginPageState
   Future<void> _login() async {
     final authProvider = context.read<AuthProvider>();
 
-    // Asumsi handleLogin kini mengembalikan token jika sukses
-    // Jika tidak, Anda perlu memodifikasi AuthProvider agar token bisa diakses
     final String? token = await authProvider.handleLogin(
       _emailController.text,
       _passwordController.text,
     );
 
-    // Periksa apakah login sukses (asumsi sukses jika token tidak null)
     if (token != null) {
-      // 🎯 SIMPAN STATUS LOGIN DAN TOKEN
       await PreferenceHandler.saveLoginStatus(true);
       await PreferenceHandler.saveToken(token);
 
       if (mounted) {
-        // Navigasi ke MainPage (rute '/home' harus mengarah ke MainPage)
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const MainPage()),
@@ -82,31 +76,31 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 48),
               Icon(Icons.access_time, size: 80, color: AppColor.retroDarkRed),
               const SizedBox(height: 16),
-              Text(
-                'PRESENTIA',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColor.retroDarkRed,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
+              // Text(
+              //   'PRESENTIA',
+              //   textAlign: TextAlign.center,
+              //   style: TextStyle(
+              //     color: AppColor.retroDarkRed,
+              //     fontSize: 24,
+              //     fontWeight: FontWeight.bold,
+              //     letterSpacing: 2,
+              //   ),
+              // ),
               Container(
                 width: 60,
                 height: 2,
                 color: AppColor.retroDarkRed,
                 margin: const EdgeInsets.symmetric(vertical: 8),
               ),
-              Text(
-                'Elegant Time Management',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColor.retroMediumRed,
-                  fontSize: 14,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
+              // Text(
+              //   'Elegant Time Management',
+              //   textAlign: TextAlign.center,
+              //   style: TextStyle(
+              //     color: AppColor.retroMediumRed,
+              //     fontSize: 14,
+              //     fontStyle: FontStyle.italic,
+              //   ),
+              // ),
               const SizedBox(height: 48),
 
               Card(

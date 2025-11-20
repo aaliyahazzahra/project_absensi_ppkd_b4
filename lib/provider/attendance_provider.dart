@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:project_absensi_ppkd_b4/models/response/attendance_stats_response.dart';
-import 'package:project_absensi_ppkd_b4/models/response/history_response.dart';
-import 'package:project_absensi_ppkd_b4/models/response/today_status_response.dart';
-import 'package:project_absensi_ppkd_b4/repositories/attendance_repository.dart';
+import 'package:project_absensi_ppkd_b4/data/models/response/attendance_stats_response.dart';
+import 'package:project_absensi_ppkd_b4/data/models/response/history_response.dart';
+import 'package:project_absensi_ppkd_b4/data/models/response/today_status_response.dart';
+import 'package:project_absensi_ppkd_b4/data/repositories/attendance_repository.dart';
 
 class AttendanceProvider with ChangeNotifier {
   AttendanceRepository? _repository;

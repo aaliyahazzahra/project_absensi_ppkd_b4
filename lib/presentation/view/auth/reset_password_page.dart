@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:project_absensi_ppkd_b4/core/app_color.dart';
+import 'package:project_absensi_ppkd_b4/core/constant/app_color.dart';
 import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
 import 'package:provider/provider.dart';
 

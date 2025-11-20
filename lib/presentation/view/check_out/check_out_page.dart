@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:provider/provider.dart';
-import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
-
+import 'package:project_absensi_ppkd_b4/core/constant/app_color.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/attendance_timer_card.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/location_map_section.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/photo_upload_card.dart';
+import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
+import 'package:provider/provider.dart';
 
+import 'widgets/check_out_button.dart';
 import 'widgets/check_out_header.dart';
 import 'widgets/check_out_status_box.dart';
-import 'widgets/check_out_button.dart';
 
 class CheckOutPage extends StatefulWidget {
   const CheckOutPage({super.key});

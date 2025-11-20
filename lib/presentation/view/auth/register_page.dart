@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:project_absensi_ppkd_b4/models/response/batches_response.dart';
-import 'package:project_absensi_ppkd_b4/models/response/training_response.dart';
+import 'package:project_absensi_ppkd_b4/core/constant/app_color.dart';
+import 'package:project_absensi_ppkd_b4/data/models/response/batches_response.dart';
+import 'package:project_absensi_ppkd_b4/data/models/response/training_response.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_dropdown_form_field.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/login_page.dart';

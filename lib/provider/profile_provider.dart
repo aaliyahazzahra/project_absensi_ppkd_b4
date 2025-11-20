@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:project_absensi_ppkd_b4/models/response/profile_response.dart'
+import 'package:project_absensi_ppkd_b4/data/models/response/profile_response.dart'
     as profile;
-import 'package:project_absensi_ppkd_b4/repositories/profile_repository.dart';
+import 'package:project_absensi_ppkd_b4/data/repositories/profile_repository.dart';
 
 class ProfileProvider with ChangeNotifier {
   ProfileRepository? _repository;

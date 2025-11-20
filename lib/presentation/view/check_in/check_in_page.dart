@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:provider/provider.dart';
+import 'package:project_absensi_ppkd_b4/core/constant/app_color.dart';
 import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
+import 'package:provider/provider.dart';
 
-import 'widgets/check_in_header.dart';
 import '../../common_widgets/attendance_timer_card.dart';
 import '../../common_widgets/location_map_section.dart';
 import '../../common_widgets/photo_upload_card.dart';
 import 'widgets/check_in_button.dart';
+import 'widgets/check_in_header.dart';
 
 class CheckInPage extends StatefulWidget {
   const CheckInPage({super.key});

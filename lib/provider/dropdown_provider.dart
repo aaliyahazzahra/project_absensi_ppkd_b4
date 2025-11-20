@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:project_absensi_ppkd_b4/models/response/batches_response.dart';
-import 'package:project_absensi_ppkd_b4/models/response/training_response.dart';
-import 'package:project_absensi_ppkd_b4/repositories/dropdown_repository.dart';
+import 'package:project_absensi_ppkd_b4/data/models/response/batches_response.dart';
+import 'package:project_absensi_ppkd_b4/data/models/response/training_response.dart';
+import 'package:project_absensi_ppkd_b4/data/repositories/dropdown_repository.dart';
 
 class DropdownProvider with ChangeNotifier {
   DropdownRepository? _repository; // 1. Buat jadi nullable

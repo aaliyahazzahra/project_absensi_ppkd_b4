@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
-import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_card.dart';
+import 'package:project_absensi_ppkd_b4/core/constant/app_color.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_confirmation_dialog.dart';
 import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
+import 'package:provider/provider.dart';
 
 class CheckInButton extends StatelessWidget {
   const CheckInButton({super.key});
@@ -42,7 +42,6 @@ class CheckInButton extends StatelessWidget {
     Navigator.pop(dialogContext);
 
     if (isSuccess) {
-      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Check-in successful!"),
@@ -70,99 +69,16 @@ class CheckInButton extends StatelessWidget {
       builder: (BuildContext dialogContext) {
         return Consumer<AttendanceProvider>(
           builder: (context, provider, child) {
-            final bool isApiLoading = provider.isCheckingIn;
-
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              backgroundColor: Colors.transparent,
-              child: CustomCard(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Confirm Clock In',
-                      style: TextStyle(
-                        color: AppColor.retroDarkRed,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Are you sure you want to clock in at $confirmTime?',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppColor.retroMediumRed,
-                        fontSize: 16,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColor.retroDarkRed,
-                        foregroundColor: AppColor.retroCream,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: isApiLoading
-                          ? null
-                          : () async {
-                              await _checkIn(context, dialogContext);
-                            },
-                      child: isApiLoading
-                          ? SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColor.retroCream,
-                                ),
-                              ),
-                            )
-                          : const Text(
-                              'Confirm',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColor.kBackgroundColor,
-                        foregroundColor: AppColor.retroDarkRed,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: AppColor.retroDarkRed,
-                            width: 2,
-                          ),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: isApiLoading
-                          ? null
-                          : () {
-                              Navigator.pop(dialogContext);
-                            },
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            return CustomConfirmationDialog(
+              title: 'Confirm Clock In',
+              content: 'Are you sure you want to clock in at $confirmTime?',
+              confirmText: 'Confirm',
+              confirmColor: AppColor.retroDarkRed,
+              isLoading: provider.isCheckingIn,
+              onCancel: () => Navigator.pop(dialogContext),
+              onConfirm: () async {
+                await _checkIn(context, dialogContext);
+              },
             );
           },
         );
@@ -199,9 +115,7 @@ class CheckInButton extends StatelessWidget {
             ),
             onPressed: isButtonDisabled
                 ? null
-                : () {
-                    _showConfirmationDialog(context);
-                  },
+                : () => _showConfirmationDialog(context),
           ),
         );
       },

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:project_absensi_ppkd_b4/data/repositories/attendance_repository.dart';
+import 'package:project_absensi_ppkd_b4/data/repositories/auth_repository.dart';
+import 'package:project_absensi_ppkd_b4/data/repositories/dropdown_repository.dart';
+import 'package:project_absensi_ppkd_b4/data/repositories/profile_repository.dart';
+import 'package:project_absensi_ppkd_b4/data/service/api_service.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/login_page.dart';
-import 'package:project_absensi_ppkd_b4/presentation/view/main_page.dart';
-import 'package:project_absensi_ppkd_b4/presentation/view/splash_screen.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/main/main_page.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/splash/splash_screen.dart';
 import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/dropdown_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/profile_provider.dart';
-import 'package:project_absensi_ppkd_b4/repositories/attendance_repository.dart';
-import 'package:project_absensi_ppkd_b4/repositories/auth_repository.dart';
-import 'package:project_absensi_ppkd_b4/repositories/dropdown_repository.dart';
-import 'package:project_absensi_ppkd_b4/repositories/profile_repository.dart';
-import 'package:project_absensi_ppkd_b4/service/api_service.dart';
 import 'package:provider/provider.dart';
 
 void main() {
