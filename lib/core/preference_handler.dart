@@ -28,10 +28,8 @@ class PreferenceHandler {
   }
 
   // --- REMOVE DATA (Logout Function) ---
-  // Ganti nama fungsi menjadi clearAllAuthData agar lebih mencerminkan aksi
   static Future<void> clearAllAuthData() async {
     final prefs = await SharedPreferences.getInstance();
-    // PERBAIKAN: Hapus kedua key secara terpisah dan benar
     await prefs.remove(_isLoginKey);
     await prefs.remove(_tokenKey);
   }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:project_absensi_ppkd_b4/core/app_color.dart';
-import 'package:project_absensi_ppkd_b4/presentation/view/check_in_page.dart';
-import 'package:project_absensi_ppkd_b4/presentation/view/check_out_page.dart';
+import 'package:project_absensi_ppkd_b4/models/response/today_status_response.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/check_in/check_in_page.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/check_out/check_out_page.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/history_page.dart';
 import 'package:project_absensi_ppkd_b4/provider/attendance_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/profile_provider.dart';
 import 'package:provider/provider.dart';
@@ -16,7 +18,10 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool _isInitialLoading = true;
-  bool _dataFetched = false;
+  // bool _dataFetched = false;
+  final int _shiftStartHour = 8;
+  final int _shiftStartMinute = 0;
+  final int _shiftEndHour = 17;
 
   @override
   void initState() {
@@ -45,7 +50,7 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() {
           _isInitialLoading = false;
-          _dataFetched = true;
+          // _dataFetched = true;
         });
       }
     }
@@ -74,6 +79,123 @@ class _HomePageState extends State<HomePage> {
       return 'Good Evening,';
     } else {
       return 'Good Night,';
+    }
+  }
+
+  String _getHeaderBackgroundImage() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) {
+      return 'assets/images/morning_banner.png';
+    } else if (hour < 15) {
+      return 'assets/images/afternoon_banner.png';
+    } else if (hour < 18) {
+      return 'assets/images/evening_banner.png';
+    } else {
+      return 'assets/images/night_banner.png';
+    }
+  }
+
+  AttendanceStatus _getTodayStatus(TodayStatusData? data) {
+    if (data == null) {
+      return AttendanceStatus.incomplete;
+    }
+
+    final status = data.status?.toLowerCase() ?? '';
+    final checkIn = data.checkInTime;
+    final checkOut = data.checkOutTime;
+
+    if (status.contains('izin') || status.contains('sakit')) {
+      return AttendanceStatus.izin;
+    }
+
+    if (status.contains('weekend') || status.contains('libur')) {
+      return AttendanceStatus.weekend;
+    }
+
+    if (status.contains('late') || status.contains('terlambat')) {
+      return AttendanceStatus.late;
+    }
+
+    if (checkIn != null) {
+      try {
+        final now = DateTime.now();
+        final timeParts = checkIn.split(':');
+        final checkInDate = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          int.parse(timeParts[0]),
+          int.parse(timeParts[1]),
+        );
+        final shiftStart = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          _shiftStartHour,
+          _shiftStartMinute,
+        );
+        if (checkInDate.isAfter(shiftStart) && !status.contains('late')) {
+          return AttendanceStatus.late;
+        }
+      } catch (_) {}
+    }
+
+    if (checkIn != null && checkOut == null) {
+      return AttendanceStatus.incomplete;
+    }
+
+    if (checkIn != null && checkOut != null) {
+      return AttendanceStatus.present;
+    }
+
+    return AttendanceStatus.absent;
+  }
+
+  Map<String, dynamic> _getStatusStyle(AttendanceStatus status) {
+    switch (status) {
+      case AttendanceStatus.present:
+        return {
+          'text': 'On Time - Present',
+          'color': Colors.green[100],
+          'textColor': Colors.green[800],
+          'icon': Icons.check_circle,
+        };
+      case AttendanceStatus.late:
+        return {
+          'text': 'Late Arrival',
+          'color': Colors.orange[100],
+          'textColor': Colors.orange[800],
+          'icon': Icons.warning_amber_rounded,
+        };
+      case AttendanceStatus.izin:
+        return {
+          'text': 'On Leave / Sick',
+          'color': Colors.blue[100],
+          'textColor': Colors.blue[800],
+          'icon': Icons.assignment_ind,
+        };
+      case AttendanceStatus.incomplete:
+        return {
+          'text':
+              'Currently Working', // Beda dikit bahasanya biar enak dilihat di Home
+          'color': Colors.blueGrey[100],
+          'textColor': Colors.blueGrey[800],
+          'icon': Icons.work_history,
+        };
+      case AttendanceStatus.weekend:
+        return {
+          'text': 'Holiday / Weekend',
+          'color': AppColor.retroLightRed,
+          'textColor': AppColor.retroMediumRed,
+          'icon': Icons.calendar_month,
+        };
+      default:
+        return {
+          'text': 'Not Checked In Yet',
+          'color': Colors.grey[200],
+          'textColor': Colors.grey[600],
+          'icon': Icons.hourglass_empty,
+        };
     }
   }
 
@@ -129,17 +251,17 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 24),
 
             _buildInfoCard(
-              title: "Total Working Hours Today", // Diterjemahkan
+              title: "Total Working Hours Today",
               icon: Icons.timer_outlined,
               mainValue: attendanceProvider.isLoadingStatus
                   ? "..."
                   : todayWorkingHours,
-              subValue: "Recorded working duration today.", // Diterjemahkan
+              subValue: "Recorded working duration today.",
             ),
             const SizedBox(height: 24),
 
             _buildInfoCard(
-              title: "Weekly Attendance Statistics", // Diterjemahkan
+              title: "Weekly Attendance Statistics",
               icon: Icons.bar_chart_outlined,
               child: attendanceProvider.isLoadingStats
                   ? Center(
@@ -155,25 +277,38 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         const SizedBox(height: 16),
                         _buildStatRow(
-                          "Total Days Attended", // Diterjemahkan
-                          totalMasuk.toString(),
-                          Colors.green,
+                          label: "Days Present",
+                          value: totalMasuk.toString(),
+                          color: Colors.green,
+                          icon: Icons.check_circle_outline,
                         ),
                         _buildStatRow(
-                          "Total Days Permitted Leave", // Diterjemahkan
-                          totalIzin.toString(),
-                          Colors.amber,
+                          label: "Leave / Sick",
+                          value: totalIzin.toString(),
+                          color: Colors.orange,
+                          icon: Icons.assignment_ind_outlined,
                         ),
                         _buildStatRow(
-                          "Total Days Absent", // Diterjemahkan
-                          totalAbsen.toString(),
-                          AppColor.retroDarkRed,
+                          label: "Absent",
+                          value: totalAbsen.toString(),
+                          color: AppColor.retroDarkRed,
+                          icon: Icons.cancel_outlined,
                         ),
                         const SizedBox(height: 16),
+
+                        Divider(
+                          color: AppColor.retroMediumRed.withOpacity(0.2),
+                        ),
+
+                        const SizedBox(height: 8),
                         Text(
                           weeklyStatsSubValue,
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColor.retroMediumRed),
+                          style: TextStyle(
+                            color: AppColor.retroMediumRed,
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                       ],
                     ),
@@ -184,30 +319,123 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildStatRow(String label, String value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
+  Widget _buildStatRow({
+    required String label,
+    required String value,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: AppColor.retroCream.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColor.retroMediumRed.withOpacity(0.1)),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: AppColor.retroDarkRed.withOpacity(0.8),
-              fontSize: 16,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: color.withOpacity(0.15)),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: AppColor.retroDarkRed.withOpacity(0.9),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
+
           Text(
             value,
             style: TextStyle(
               color: color,
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildAttendanceVerdict(String? checkInTimeStr) {
+    if (checkInTimeStr == null || checkInTimeStr == "--:--") {
+      return Text("Not Present Yet", style: TextStyle(color: Colors.grey));
+    }
+
+    try {
+      final now = DateTime.now();
+      final format = DateFormat("HH:mm");
+      final checkInTime = format.parse(checkInTimeStr);
+
+      final fullCheckInDate = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        checkInTime.hour,
+        checkInTime.minute,
+      );
+
+      final shiftStart = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        8,
+        0,
+      ); // JAM 8:00
+
+      if (fullCheckInDate.isAfter(shiftStart)) {
+        final difference = fullCheckInDate.difference(shiftStart).inMinutes;
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.red[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.warning, size: 14, color: Colors.red),
+              SizedBox(width: 4),
+              Text(
+                "LATE ($difference min)",
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
+      } else {
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.green[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            "ON TIME",
+            style: TextStyle(
+              color: Colors.green[800],
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      return SizedBox();
+    }
   }
 
   Widget _buildHeaderCard(
@@ -217,72 +445,181 @@ class _HomePageState extends State<HomePage> {
     bool isLoading,
   ) {
     final String greeting = _getGreeting();
+    final String bgImage = _getHeaderBackgroundImage();
+
+    // 1. Ambil Data & Hitung Style Status
+    final todayData = context.watch<AttendanceProvider>().todayStatus;
+    final statusEnum = _getTodayStatus(todayData);
+    final style = _getStatusStyle(statusEnum);
+
+    String startH = _shiftStartHour.toString().padLeft(2, '0');
+    String startM = _shiftStartMinute.toString().padLeft(2, '0');
+    String endH = _shiftEndHour.toString().padLeft(2, '0');
+
+    // TEKS DINAMIS: Kalau variabel _shiftStartHour diubah, teks ini otomatis berubah
+    final String workShift = "Regular Shift ($startH:$startM - $endH:00)";
+
     return Container(
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
         color: AppColor.retroDarkRed,
         borderRadius: BorderRadius.circular(20),
+        image: DecorationImage(
+          image: AssetImage(bgImage),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.black.withOpacity(0.4),
+            BlendMode.darken,
+          ),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            greeting,
-            style: TextStyle(
-              color: AppColor.retroCream.withOpacity(0.8),
-              fontSize: 16,
-            ),
+          Row(
+            children: [
+              Text(
+                greeting,
+                style: TextStyle(
+                  color: AppColor.retroCream.withOpacity(0.9),
+                  fontSize: 16,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(0, 0),
+                      blurRadius: 10.0,
+                      color: Colors.black,
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              isLoading
+                  ? SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        color: AppColor.retroCream,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Icon(
+                      Icons.check_circle,
+                      color: AppColor.retroCream,
+                      size: 28,
+                    ),
+            ],
           ),
+          const SizedBox(height: 4),
           Text(
             userName,
             style: TextStyle(
               color: AppColor.retroCream,
-              fontSize: 22,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
+              shadows: [
+                Shadow(
+                  offset: Offset(0, 0),
+                  blurRadius: 10.0,
+                  color: Colors.black,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
+
           Container(
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
-              color: AppColor.retroLightRed,
+              color: AppColor.retroLightRed.withOpacity(0.9),
               borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: AppColor.retroCream.withOpacity(0.3)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  "Today's Status",
-                  style: TextStyle(
-                    color: AppColor.retroCream,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Today's Status",
+                      style: TextStyle(
+                        color: AppColor.retroCream,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: style['color'],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            style['icon'],
+                            size: 14,
+                            color: style['textColor'],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            style['text'],
+                            style: TextStyle(
+                              color: style['textColor'],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
+
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildStatusColumn("Check-In", checkInTime),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: AppColor.retroCream.withOpacity(0.5),
+                    ),
                     _buildStatusColumn("Check-Out", checkOutTime),
                   ],
                 ),
+
                 const SizedBox(height: 12),
-                Center(
-                  child: isLoading
-                      ? SizedBox(
-                          height: 28,
-                          width: 28,
-                          child: CircularProgressIndicator(
-                            color: AppColor.retroCream.withOpacity(0.7),
-                            strokeWidth: 3,
-                          ),
-                        )
-                      : Icon(
-                          Icons.check_circle_outline,
-                          color: AppColor.retroCream.withOpacity(0.7),
-                          size: 28,
-                        ),
+
+                Divider(
+                  color: AppColor.retroCream.withOpacity(0.3),
+                  thickness: 1,
+                ),
+                const SizedBox(height: 8),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.calendar_month_outlined,
+                      size: 16,
+                      color: AppColor.retroCream,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      workShift,
+                      style: TextStyle(
+                        color: AppColor.retroCream,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -325,10 +662,41 @@ class _HomePageState extends State<HomePage> {
     final bool hasCheckedIn = todayStatus?.checkInTime != null;
     final bool hasCheckedOut = todayStatus?.checkOutTime != null;
 
-    final bool isCheckInEnabled =
-        !hasCheckedIn && !isCheckingIn && !isCheckingOut;
-    final bool isCheckOutEnabled =
-        hasCheckedIn && !hasCheckedOut && !isCheckingIn && !isCheckingOut;
+    if (hasCheckedIn && hasCheckedOut) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.green[50],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.green.shade200),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.task_alt, size: 48, color: Colors.green[700]),
+            const SizedBox(height: 12),
+            Text(
+              "You've completed your work today!",
+              style: TextStyle(
+                color: Colors.green[800],
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              "Have a good rest.",
+              style: TextStyle(color: Colors.green[600], fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final bool isCheckInDisabled =
+        isCheckingIn || isCheckingOut || hasCheckedIn;
+
+    final bool isCheckOutDisabled =
+        isCheckingIn || isCheckingOut || !hasCheckedIn || hasCheckedOut;
 
     return Row(
       children: [
@@ -337,7 +705,7 @@ class _HomePageState extends State<HomePage> {
             label: isCheckingIn ? "Loading..." : "Check In",
             icon: isCheckingIn ? Icons.hourglass_empty : Icons.login,
             isPrimary: true,
-            isDisabled: !isCheckInEnabled,
+            isDisabled: isCheckInDisabled,
             onPressed: () async {
               await Navigator.push(
                 context,
@@ -348,12 +716,13 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         const SizedBox(width: 16),
+
         Expanded(
           child: _buildActionButton(
             label: isCheckingOut ? "Loading..." : "Check Out",
             icon: isCheckingOut ? Icons.hourglass_empty : Icons.logout,
             isPrimary: false,
-            isDisabled: !isCheckOutEnabled,
+            isDisabled: isCheckOutDisabled,
             onPressed: () async {
               await Navigator.push(
                 context,

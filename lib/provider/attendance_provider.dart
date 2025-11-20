@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:project_absensi_ppkd_b4/models/response/attendance_stats_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/history_response.dart';
 import 'package:project_absensi_ppkd_b4/models/response/today_status_response.dart';
@@ -11,6 +12,27 @@ class AttendanceProvider with ChangeNotifier {
 
   void updateRepository(AttendanceRepository repository) {
     _repository = repository;
+  }
+
+  // --- UI STATE (LOCATION DATA) ---
+  Position? _capturedPosition;
+  String? _capturedAddress;
+
+  Position? get capturedPosition => _capturedPosition;
+  String? get capturedAddress => _capturedAddress;
+
+  // Dipanggil oleh LocationMapSection saat GPS berhasil didapat
+  void setLocationData(Position position, String address) {
+    _capturedPosition = position;
+    _capturedAddress = address;
+    notifyListeners();
+  }
+
+  // Dipanggil saat keluar halaman CheckInPage (dispose)
+  void clearLocationData() {
+    _capturedPosition = null;
+    _capturedAddress = null;
+    notifyListeners();
   }
 
   // --- TODAY STATUS STATE ---
@@ -62,7 +84,6 @@ class AttendanceProvider with ChangeNotifier {
 
     try {
       final now = DateTime.now();
-      // Gabungkan tanggal hari ini dengan waktu untuk membuat DateTime valid
       final checkInTime = DateTime.parse(
         '${now.toString().split(' ').first} $checkIn',
       );
@@ -70,18 +91,15 @@ class AttendanceProvider with ChangeNotifier {
         '${now.toString().split(' ').first} $checkOut',
       );
 
-      // Hitung selisih
       if (checkOutTime.isAfter(checkInTime)) {
         return checkOutTime.difference(checkInTime);
       }
     } catch (e) {
-      // Print error di console jika gagal parsing
       debugPrint('Error calculating duration: $e');
     }
     return Duration.zero;
   }
 
-  // Helper: Format Durasi ke "Xh Ym"
   String _formatDuration(Duration duration) {
     if (duration.isNegative) return "0h 0m";
     final hours = duration.inHours;
@@ -146,19 +164,16 @@ class AttendanceProvider with ChangeNotifier {
     try {
       final response = await _repository!.fetchTodayStatus();
 
-      // Cek apakah data valid. Jika null, _todayStatus diset null.
       _todayStatus = response;
 
-      // Panggil perhitungan jam kerja (akan menjadi "0h 0m" jika _todayStatus null/belum checkout)
       _calculateTodayWorkingHours();
     } catch (e) {
       _statusErrorMessage = e.toString();
-      // Penting: Jika ada error, set status menjadi null agar UI menunjukkan belum absen (kecuali error server)
       _todayStatus = null;
       _totalWorkingHoursToday = "0h 0m";
     } finally {
       _isLoadingStatus = false;
-      notifyListeners(); // Memicu rebuild di Home Page
+      notifyListeners();
     }
   }
 
@@ -204,7 +219,6 @@ class AttendanceProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Lakukan Check-In
       await _repository!.checkIn(
         latitude: latitude,
         longitude: longitude,
@@ -214,11 +228,9 @@ class AttendanceProvider with ChangeNotifier {
         status: status,
       );
 
-      // 2. KOREKSI: Manual update _todayStatus dengan data yang PASTI ada
       _todayStatus = TodayStatusData(
-        // Menggunakan DateTime.parse()
         attendanceDate: DateTime.parse(attendanceDate),
-        checkInTime: checkInTime, // String waktu (misal: "08:10")
+        checkInTime: checkInTime,
         checkOutTime: null,
         status: status,
         checkInAddress: address,
@@ -227,11 +239,8 @@ class AttendanceProvider with ChangeNotifier {
 
       _calculateTodayWorkingHours();
 
-      // 3. Matikan status loading. Ini memicu rebuild di Home Page dengan data baru.
       _isCheckingIn = false;
       notifyListeners();
-
-      // 🛑 fetchTodayStatusData() TIDAK ADA DI SINI
 
       return true;
     } catch (e) {
@@ -261,7 +270,6 @@ class AttendanceProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Lakukan Check-Out
       await _repository!.checkOut(
         latitude: latitude,
         longitude: longitude,
@@ -270,12 +278,11 @@ class AttendanceProvider with ChangeNotifier {
         checkOutTime: checkOutTime,
       );
 
-      // 2. KOREKSI: Manual update _todayStatus
       if (_todayStatus != null) {
         _todayStatus = TodayStatusData(
           attendanceDate: _todayStatus!.attendanceDate,
-          checkInTime: _todayStatus!.checkInTime, // Pertahankan Check-In lama
-          checkOutTime: checkOutTime, // Masukkan waktu Check-Out baru
+          checkInTime: _todayStatus!.checkInTime,
+          checkOutTime: checkOutTime,
           status: "masuk",
           checkInAddress: _todayStatus!.checkInAddress,
           checkOutAddress: address,
