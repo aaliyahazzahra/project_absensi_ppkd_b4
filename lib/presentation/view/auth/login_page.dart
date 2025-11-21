@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:project_absensi_ppkd_b4/core/constant/app_color.dart';
 import 'package:project_absensi_ppkd_b4/core/utils/preference_handler.dart';
+import 'package:project_absensi_ppkd_b4/core/utils/validator_helper.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_primary_button.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/forgot_password_page.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/register_page.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/auth/widgets/auth_footer.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/auth/widgets/auth_header.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/main/main_page.dart';
 import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
 import 'package:provider/provider.dart';
@@ -18,6 +22,9 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  bool _isPasswordVisible = false;
 
   @override
   void dispose() {
@@ -27,12 +34,16 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
     final authProvider = context.read<AuthProvider>();
 
     final String? token = await authProvider.handleLogin(
       _emailController.text,
       _passwordController.text,
     );
+
+    if (!mounted) return;
 
     if (token != null) {
       await PreferenceHandler.saveLoginStatus(true);
@@ -46,192 +57,123 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } else {
-      if (mounted) {
-        final String errorMessage =
-            (authProvider.errorMessage ?? 'Login failed: Unknown error')
-                .replaceAll("Exception: ", "");
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: AppColor.retroDarkRed,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            (authProvider.errorMessage ?? 'Login failed').replaceAll(
+              "Exception: ",
+              "",
+            ),
           ),
-        );
-      }
+          backgroundColor: AppColor.retroDarkRed,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final bool isLoading = authProvider.isLoading;
 
     return Scaffold(
       backgroundColor: AppColor.retroCream,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              const SizedBox(height: 48),
-              Icon(Icons.access_time, size: 80, color: AppColor.retroDarkRed),
-              const SizedBox(height: 16),
-              // Text(
-              //   'PRESENTIA',
-              //   textAlign: TextAlign.center,
-              //   style: TextStyle(
-              //     color: AppColor.retroDarkRed,
-              //     fontSize: 24,
-              //     fontWeight: FontWeight.bold,
-              //     letterSpacing: 2,
-              //   ),
-              // ),
-              Container(
-                width: 60,
-                height: 2,
-                color: AppColor.retroDarkRed,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-              ),
-              // Text(
-              //   'Elegant Time Management',
-              //   textAlign: TextAlign.center,
-              //   style: TextStyle(
-              //     color: AppColor.retroMediumRed,
-              //     fontSize: 14,
-              //     fontStyle: FontStyle.italic,
-              //   ),
-              // ),
-              const SizedBox(height: 48),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const AuthHeader(title: 'Welcome Back'),
 
-              Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                color: AppColor.kBackgroundColor,
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Welcome Back',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColor.retroDarkRed,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
+                const SizedBox(height: 48),
 
-                      const SizedBox(height: 8),
-                      CustomTextFormField(
-                        label: 'Email Address',
-                        controller: _emailController,
-                        hintText: 'your.email@example.com',
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 24),
+                Card(
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  color: AppColor.kBackgroundColor,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          CustomTextFormField(
+                            label: 'Email Address',
+                            controller: _emailController,
+                            hintText: 'your.email@example.com',
+                            keyboardType: TextInputType.emailAddress,
+                            validator: ValidatorHelper.validateEmail,
+                          ),
+                          const SizedBox(height: 24),
 
-                      const SizedBox(height: 8),
-                      CustomTextFormField(
-                        label: 'Password',
-                        controller: _passwordController,
-                        hintText: '********',
-                        obscureText: true,
-                      ),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const ForgotPasswordPage(),
+                          CustomTextFormField(
+                            label: 'Password',
+                            controller: _passwordController,
+                            hintText: '********',
+                            obscureText: !_isPasswordVisible,
+                            validator: (val) =>
+                                ValidatorHelper.validateRequired(
+                                  val,
+                                  'Password',
+                                ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isPasswordVisible
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                color: AppColor.retroMediumRed,
                               ),
-                            );
-                          },
-                          child: Text(
-                            'Forgot Password?',
-                            style: TextStyle(
-                              color: AppColor.retroLightRed,
-                              fontWeight: FontWeight.w600,
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordVisible = !_isPasswordVisible;
+                                });
+                              },
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
+                          const SizedBox(height: 16),
 
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColor.retroDarkRed,
-                          foregroundColor: AppColor.retroCream,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-
-                        onPressed: isLoading ? null : _login,
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    AppColor.retroCream,
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ForgotPasswordPage(),
                                   ),
-                                  strokeWidth: 3,
-                                ),
-                              )
-                            : const Text(
-                                'Sign In',
+                                );
+                              },
+                              child: Text(
+                                'Forgot Password?',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
+                                  color: AppColor.retroLightRed,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                      ),
+                            ),
+                          ),
 
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Divider(
-                              color: AppColor.retroMediumRed.withOpacity(0.5),
-                            ),
+                          const SizedBox(height: 32),
+
+                          CustomPrimaryButton(
+                            text: 'Sign In',
+                            isLoading: authProvider.isLoading,
+                            onPressed: _login,
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16.0,
-                            ),
-                            child: Text(
-                              'or',
-                              style: TextStyle(color: AppColor.retroMediumRed),
-                            ),
-                          ),
-                          Expanded(
-                            child: Divider(
-                              color: AppColor.retroMediumRed.withOpacity(0.5),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Don't have an account? ",
-                            style: TextStyle(
-                              color: AppColor.retroDarkRed.withOpacity(0.7),
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
+
+                          const SizedBox(height: 24),
+                          _buildDivider(),
+                          const SizedBox(height: 24),
+
+                          AuthFooter(
+                            text: "Don't have an account? ",
+                            actionText: "Register",
+                            onActionTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -239,24 +181,34 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               );
                             },
-                            child: Text(
-                              'Register',
-                              style: TextStyle(
-                                color: AppColor.retroLightRed,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Row(
+      children: [
+        Expanded(
+          child: Divider(color: AppColor.retroMediumRed.withOpacity(0.5)),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Text('or', style: TextStyle(color: AppColor.retroMediumRed)),
+        ),
+        Expanded(
+          child: Divider(color: AppColor.retroMediumRed.withOpacity(0.5)),
+        ),
+      ],
     );
   }
 }

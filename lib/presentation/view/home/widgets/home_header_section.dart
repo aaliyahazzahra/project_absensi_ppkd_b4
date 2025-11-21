@@ -21,7 +21,6 @@ class HomeHeaderSection extends StatelessWidget {
     final style = HomeHelper.getStatusStyle(statusEnum);
     final bgImage = HomeHelper.getHeaderBackgroundImage();
 
-    // Format jam shift dari Helper
     String startH = HomeHelper.shiftStartHour.toString().padLeft(2, '0');
     String startM = HomeHelper.shiftStartMinute.toString().padLeft(2, '0');
     String endH = HomeHelper.shiftEndHour.toString().padLeft(2, '0');

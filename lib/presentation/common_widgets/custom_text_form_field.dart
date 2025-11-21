@@ -8,10 +8,10 @@ class CustomTextFormField extends StatelessWidget {
   final TextInputType keyboardType;
   final bool obscureText;
   final String? Function(String?)? validator;
-
   final bool readOnly;
   final Color? fillColor;
   final Color? labelColor;
+  final Widget? suffixIcon;
 
   const CustomTextFormField({
     super.key,
@@ -24,6 +24,7 @@ class CustomTextFormField extends StatelessWidget {
     this.readOnly = false,
     this.fillColor,
     this.labelColor,
+    this.suffixIcon,
   });
 
   @override
@@ -48,7 +49,6 @@ class CustomTextFormField extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8.0),
-
         TextFormField(
           controller: controller,
           readOnly: readOnly,
@@ -59,6 +59,7 @@ class CustomTextFormField extends StatelessWidget {
             ),
             filled: true,
             fillColor: finalFillColor,
+            suffixIcon: suffixIcon,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,

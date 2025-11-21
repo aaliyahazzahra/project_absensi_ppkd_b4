@@ -4,11 +4,17 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:project_absensi_ppkd_b4/core/constant/app_color.dart';
+import 'package:project_absensi_ppkd_b4/core/utils/validator_helper.dart';
 import 'package:project_absensi_ppkd_b4/data/models/response/batches_response.dart';
 import 'package:project_absensi_ppkd_b4/data/models/response/training_response.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_dropdown_form_field.dart';
+import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_primary_button.dart';
 import 'package:project_absensi_ppkd_b4/presentation/common_widgets/custom_text_form_field.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/auth/auth_back_button.dart';
 import 'package:project_absensi_ppkd_b4/presentation/view/auth/login_page.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/auth/widgets/auth_footer.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/auth/widgets/auth_header.dart';
+import 'package:project_absensi_ppkd_b4/presentation/view/auth/widgets/register_photo_picker.dart';
 import 'package:project_absensi_ppkd_b4/provider/auth_provider.dart';
 import 'package:project_absensi_ppkd_b4/provider/dropdown_provider.dart';
 import 'package:provider/provider.dart';
@@ -31,12 +37,16 @@ class _RegisterPageState extends State<RegisterPage> {
   String? _selectedJenisKelamin;
   String? _profilePhotoBase64;
   String _profilePhotoName = "Tap to select photo";
+  bool _isPasswordVisible = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DropdownProvider>().fetchDropdownData();
+      final dropdownProvider = context.read<DropdownProvider>();
+      if (dropdownProvider.batchList.isEmpty) {
+        dropdownProvider.fetchDropdownData();
+      }
     });
   }
 
@@ -48,13 +58,14 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
+  // --- Logic Methods ---
+
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 50,
     );
-
     if (image != null) {
       final bytes = await File(image.path).readAsBytes();
       setState(() {
@@ -65,20 +76,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _register(AuthProvider authProvider) async {
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      return;
-    }
-    if (_selectedJenisKelamin == null ||
-        _selectedBatchId == null ||
-        _selectedTrainingId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill all fields'),
-          backgroundColor: AppColor.retroDarkRed,
-        ),
-      );
-      return;
-    }
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final bool isSuccess = await authProvider.handleRegister(
       name: _nameController.text,
@@ -90,37 +88,31 @@ class _RegisterPageState extends State<RegisterPage> {
       trainingId: _selectedTrainingId,
     );
 
+    if (!mounted) return;
+
     if (isSuccess) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registration successful! Please log in.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-          (route) => false,
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Success! Please login.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+        (route) => false,
+      );
     } else {
-      if (mounted) {
-        final String errorMessage =
-            (authProvider.registerErrorMessage ??
-                    'Register failed: Unknown error')
-                .replaceAll("Exception: ", "");
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: AppColor.retroDarkRed,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.registerErrorMessage ?? 'Error'),
+          backgroundColor: AppColor.retroDarkRed,
+        ),
+      );
     }
   }
+
+  // --- UI Methods ---
 
   @override
   Widget build(BuildContext context) {
@@ -134,15 +126,21 @@ class _RegisterPageState extends State<RegisterPage> {
           padding: const EdgeInsets.all(24.0),
           child: Column(
             children: [
-              _buildHeader(),
+              AuthBackButton(onPressed: () => Navigator.pop(context)),
+
+              const SizedBox(height: 24),
+
+              const AuthHeader(title: 'Create Account'),
+
               const SizedBox(height: 32),
+
               dropdownProvider.isLoading
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
                         color: AppColor.retroDarkRed,
                       ),
                     )
-                  : _buildRegisterCard(authProvider, dropdownProvider),
+                  : _buildRegisterForm(authProvider, dropdownProvider),
             ],
           ),
         ),
@@ -150,58 +148,10 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Row(
-                children: [
-                  Icon(Icons.arrow_back, color: AppColor.retroDarkRed),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Back',
-                    style: TextStyle(
-                      color: AppColor.retroDarkRed,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        Icon(Icons.access_time, size: 80, color: AppColor.retroDarkRed),
-        const SizedBox(height: 16),
-        Text(
-          'Create Account',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColor.retroDarkRed,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Container(
-          width: 60,
-          height: 2,
-          color: AppColor.retroDarkRed,
-          margin: const EdgeInsets.symmetric(vertical: 8),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRegisterCard(
+  Widget _buildRegisterForm(
     AuthProvider authProvider,
     DropdownProvider dropdownProvider,
   ) {
-    final bool isLoading = authProvider.isRegisterLoading;
-
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -217,20 +167,15 @@ class _RegisterPageState extends State<RegisterPage> {
                 label: 'Full Name',
                 controller: _nameController,
                 hintText: 'John Doe',
-                validator: (value) => (value == null || value.isEmpty)
-                    ? 'Name cannot be empty'
-                    : null,
+                validator: ValidatorHelper.validateName,
               ),
               const SizedBox(height: 24),
 
               CustomTextFormField(
-                label: 'Email Address',
+                label: 'Email',
                 controller: _emailController,
-                hintText: 'your.email@example.com',
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) => (value == null || value.isEmpty)
-                    ? 'Email cannot be empty'
-                    : null,
+                hintText: 'email@example.com',
+                validator: ValidatorHelper.validateEmail,
               ),
               const SizedBox(height: 24),
 
@@ -238,18 +183,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 label: 'Gender',
                 hintText: 'Select Gender',
                 value: _selectedJenisKelamin,
-                isExpanded: false,
                 items: const [
                   DropdownMenuItem(value: "L", child: Text("Laki-laki")),
                   DropdownMenuItem(value: "P", child: Text("Perempuan")),
                 ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedJenisKelamin = value;
-                  });
-                },
-                validator: (value) =>
-                    (value == null) ? 'Please select a gender' : null,
+                onChanged: (v) => setState(() => _selectedJenisKelamin = v),
+                validator: (v) => v == null ? 'Required' : null,
               ),
               const SizedBox(height: 24),
 
@@ -257,22 +196,14 @@ class _RegisterPageState extends State<RegisterPage> {
                 label: 'Batch',
                 hintText: 'Select Batch',
                 value: _selectedBatchId,
-                items: dropdownProvider.batchList.map((Batch batch) {
-                  return DropdownMenuItem<int>(
-                    value: batch.id,
-                    child: Text(
-                      "Batch ke - ${batch.batchKe ?? 'N/A'}",
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                items: dropdownProvider.batchList.map((Batch b) {
+                  return DropdownMenuItem(
+                    value: b.id,
+                    child: Text("Batch ${b.batchKe}"),
                   );
                 }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedBatchId = value;
-                  });
-                },
-                validator: (value) =>
-                    (value == null) ? 'Please select a batch' : null,
+                onChanged: (v) => setState(() => _selectedBatchId = v),
+                validator: (v) => v == null ? 'Required' : null,
               ),
               const SizedBox(height: 24),
 
@@ -280,123 +211,59 @@ class _RegisterPageState extends State<RegisterPage> {
                 label: 'Training',
                 hintText: 'Select Training',
                 value: _selectedTrainingId,
-                items: dropdownProvider.trainingList.map((Training training) {
-                  return DropdownMenuItem<int>(
-                    value: training.id,
-                    child: Text(
-                      training.title ?? 'N/A',
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                items: dropdownProvider.trainingList.map((Training t) {
+                  return DropdownMenuItem(
+                    value: t.id,
+                    child: Text(t.title ?? '-'),
                   );
                 }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedTrainingId = value;
-                  });
-                },
-                validator: (value) =>
-                    (value == null) ? 'Please select a training' : null,
+                onChanged: (v) => setState(() => _selectedTrainingId = v),
+                validator: (v) => v == null ? 'Required' : null,
               ),
               const SizedBox(height: 24),
 
               CustomTextFormField(
                 label: 'Password',
                 controller: _passwordController,
-                hintText: '********',
-                obscureText: true,
-                validator: (value) => (value == null || value.isEmpty)
-                    ? 'Password cannot be empty'
-                    : null,
+                hintText: '******',
+                obscureText: !_isPasswordVisible,
+                validator: ValidatorHelper.validatePassword,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isPasswordVisible
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                    color: AppColor.retroMediumRed,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordVisible = !_isPasswordVisible;
+                    });
+                  },
+                ),
               ),
               const SizedBox(height: 24),
 
-              Text(
-                'Profile Photo (Optional)',
-                style: TextStyle(
-                  color: AppColor.retroDarkRed,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              RegisterPhotoPicker(
+                photoName: _profilePhotoName,
+                hasImage: _profilePhotoBase64 != null,
+                onTap: _pickImage,
               ),
-              const SizedBox(height: 8.0),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColor.retroCream.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12.0),
-                  leading: Icon(
-                    Icons.photo_outlined,
-                    color: AppColor.retroDarkRed,
-                  ),
-                  title: Text(
-                    _profilePhotoName,
-                    style: TextStyle(
-                      color: _profilePhotoBase64 != null
-                          ? AppColor.retroDarkRed
-                          : AppColor.retroMediumRed.withOpacity(0.7),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: _pickImage,
-                ),
-              ),
+
               const SizedBox(height: 32),
 
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColor.retroDarkRed,
-                  foregroundColor: AppColor.retroCream,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: isLoading ? null : () => _register(authProvider),
-                child: isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColor.retroCream,
-                          ),
-                          strokeWidth: 3,
-                        ),
-                      )
-                    : const Text(
-                        'Register',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
+              CustomPrimaryButton(
+                text: 'Register',
+                isLoading: authProvider.isRegisterLoading,
+                onPressed: () => _register(authProvider),
               ),
+
               const SizedBox(height: 24),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Already have an account? ",
-                    style: TextStyle(
-                      color: AppColor.retroDarkRed.withOpacity(0.7),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    child: Text(
-                      'Sign In',
-                      style: TextStyle(
-                        color: AppColor.retroLightRed,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+              AuthFooter(
+                text: "Already have an account? ",
+                actionText: "Sign In",
+                onActionTap: () => Navigator.pop(context),
               ),
             ],
           ),

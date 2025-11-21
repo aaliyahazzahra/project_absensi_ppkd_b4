@@ -4,7 +4,7 @@ import 'package:project_absensi_ppkd_b4/core/constant/app_color.dart';
 class CustomDropdownFormField<T> extends StatelessWidget {
   final String label;
   final String hintText;
-  final T? value; // Nilai yang sedang terpilih
+  final T? value;
   final List<DropdownMenuItem<T>> items;
   final void Function(T?)? onChanged;
   final String? Function(T?)? validator;
